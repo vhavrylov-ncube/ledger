@@ -43,12 +43,6 @@ public:
   UInt256Wrapper()           = delete;
   ~UInt256Wrapper() override = default;
 
-  static fetch::vm::Ptr<fetch::vm::String> ToString(fetch::vm::VM *                       vm,
-                                                    fetch::vm::Ptr<UInt256Wrapper> const &n);
-
-  template <typename T>
-  static T ToPrimitive(fetch::vm::VM * /*vm*/, fetch::vm::Ptr<UInt256Wrapper> const &a);
-
   static void Bind(fetch::vm::Module &module);
 
   UInt256Wrapper(fetch::vm::VM *vm, fetch::vm::TypeId type_id, UInt256 data);
@@ -65,15 +59,11 @@ public:
   static fetch::vm::Ptr<UInt256Wrapper> ConstructorFromBytes(
       fetch::vm::VM *vm, fetch::vm::TypeId type_id, fetch::vm::Ptr<ByteArrayWrapper> const &ba);
 
-  double ToFloat64() const;
-
-  int32_t ToInt32() const;
-
   double LogValue() const;
 
-  bool LessThan(fetch::vm::Ptr<UInt256Wrapper> const &other) const;
-
   void Increase();
+
+  void Decrease();
 
   fetch::math::SizeType size() const;
 
@@ -101,8 +91,12 @@ public:
   bool IsEqual(fetch::vm::Ptr<Object> const &lhso, fetch::vm::Ptr<Object> const &rhso) override;
   bool IsNotEqual(fetch::vm::Ptr<Object> const &lhso, fetch::vm::Ptr<Object> const &rhso) override;
   bool IsLessThan(fetch::vm::Ptr<Object> const &lhso, fetch::vm::Ptr<Object> const &rhso) override;
+  bool IsLessThanOrEqual(fetch::vm::Ptr<Object> const &lhso,
+                         fetch::vm::Ptr<Object> const &rhso) override;
   bool IsGreaterThan(fetch::vm::Ptr<Object> const &lhso,
                      fetch::vm::Ptr<Object> const &rhso) override;
+  bool IsGreaterThanOrEqual(fetch::vm::Ptr<Object> const &lhso,
+                            fetch::vm::Ptr<Object> const &rhso) override;
 
 private:
   UInt256 number_;

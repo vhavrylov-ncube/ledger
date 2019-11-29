@@ -196,7 +196,13 @@ TEST_F(UInt256Tests, uint256_comparisons)
       bigger.increase();
 
       assert(smaller < bigger, "1<2 is false!");
+      assert(smaller <= bigger, "1<=2 is false!");
       assert((smaller > bigger) == false, "1>2 is true!");
+      assert((smaller >= bigger) == false, "1>=2 is true!");
+      assert((bigger > smaller) == true, "2>1 is false!");
+      assert((bigger >= smaller) == true, "2>=1 is false!");
+      assert((bigger < smaller) == false, "2<1 is true!");
+      assert((bigger <= smaller) == false, "2<=1 is true!");
       assert(smaller != bigger, "1!=2 is false!");
       assert((smaller == bigger) == false, "1==2 is true!");
     endfunction
@@ -421,7 +427,7 @@ TEST_F(UInt256Tests, uint256_logValue)
     using namespace std;
     UInt256Wrapper n1(dummy_vm_ptr, dummy_typeid, input.first);
 
-    const auto as_double  = n1.ToFloat64();
+    const auto as_double  = ToDouble(n1.number());
     const auto result     = n1.LogValue();
     const auto exp_double = input.second;
     const auto expected   = std::log(exp_double);
@@ -455,7 +461,7 @@ TEST_F(UInt256Tests, uint256_type_casts)
           var test : UInt256 = UInt256(9000000000000000000u64);
           var correct : UInt64 = 9000000000000000000u64;
 
-          var test_float64 = test.toFloat64();
+          var test_float64 = toFloat64(test);
           var correct_float64 = toFloat64(correct);
           assert(test_float64 == correct_float64, "toFloat64(...) failed");
 
@@ -481,7 +487,7 @@ TEST_F(UInt256Tests, uint256_type_casts)
 }
 
 // Disabled until UInt256 constructor from bytearray fix/rework.
-TEST_F(UInt256Tests, DISABLED_uint256_to_string)
+TEST_F(UInt256Tests, uint256_to_string)
 {
   static constexpr char const *TEXT = R"(
       function main()
