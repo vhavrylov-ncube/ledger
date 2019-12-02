@@ -33,6 +33,20 @@ namespace ml {
 
 class VMStateDict;
 
+enum class SupportedLayerType : uint8_t
+{
+  PLACEHOLDER,
+  FULLY_CONNECTED,
+  CONV1D,
+  ACTIVATION_RELU,
+  ACTIVATION_SOFTMAX,
+  LOSS_MSE,
+  LOSS_CROSSENTROPY,
+  DROPOUT,
+  TRANSPOSE,
+  EXP
+};
+
 class VMGraph : public fetch::vm::Object
 {
 public:
@@ -52,6 +66,10 @@ public:
   void BackPropagate(fetch::vm::Ptr<fetch::vm::String> const &name);
 
   void Step(DataType const &lr);
+
+  template <typename... LayerArgs>
+  void AddLayer(fetch::vm::Ptr<fetch::vm::String> const &type,
+                fetch::vm::Ptr<fetch::vm::String> const &name, LayerArgs... args);
 
   void AddPlaceholder(fetch::vm::Ptr<fetch::vm::String> const &name);
 
@@ -103,6 +121,29 @@ public:
       fetch::vm::Ptr<fetch::vm::String> const &graph_string);
 
 private:
+  static const std::map<std::string, SupportedLayerType> layer_types_;
+
+  inline void AssertLayerTypeMatches(SupportedLayerType                layer,
+                                     std::vector<SupportedLayerType> &&valids) const;
+
+  template <typename T>
+  inline T ParseName(std::string const &name, std::map<std::string, T> const &dict,
+                     std::string const &errmsg) const;
+
+  void AddLayerSpecificImpl(SupportedLayerType type, fetch::vm::Ptr<fetch::vm::String> const &name);
+  void AddLayerSpecificImpl(SupportedLayerType type, fetch::vm::Ptr<fetch::vm::String> const &name,
+                            fetch::vm::Ptr<fetch::vm::String> const &input_name);
+  void AddLayerSpecificImpl(SupportedLayerType type, fetch::vm::Ptr<fetch::vm::String> const &name,
+                            fetch::vm::Ptr<fetch::vm::String> const &input_name,
+                            fetch::vm::Ptr<fetch::vm::String> const &labels);
+
+  template <typename ActivationType>
+  void AddActivation(std::string const &name, std::string const &input_name);
+
+  template <typename LossType>
+  void AddLoss(std::string const &name, std::string const &input_name,
+               std::string const &label_name);
+
   GraphType graph_;
 };
 

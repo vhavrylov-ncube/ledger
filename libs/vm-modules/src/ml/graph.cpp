@@ -16,8 +16,9 @@
 //
 //------------------------------------------------------------------------------
 
-#include "core/byte_array/decoders.hpp"
 #include "ml/core/graph.hpp"
+
+#include "core/byte_array/decoders.hpp"
 #include "ml/layers/convolution_1d.hpp"
 #include "ml/layers/fully_connected.hpp"
 #include "ml/ops/activation.hpp"
@@ -40,6 +41,25 @@ using SizeType       = fetch::math::SizeType;
 using MathTensorType = fetch::math::Tensor<VMGraph::DataType>;
 using VMTensorType   = fetch::vm_modules::math::VMTensor;
 using VMPtrString    = Ptr<String>;
+
+using namespace std::placeholders;
+
+using ActivationAdder = std::function<void(std::string const &, std::string const &)>;
+using LossAdder =
+    std::function<void(std::string const &, std::string const &, std::string const &)>;
+
+std::map<std::string, SupportedLayerType> const VMGraph::layer_types_{
+    {"placeholder", SupportedLayerType::PLACEHOLDER},
+    {"fully_connected", SupportedLayerType::FULLY_CONNECTED},
+    {"conv1d", SupportedLayerType::CONV1D},
+    {"relu", SupportedLayerType::ACTIVATION_RELU},
+    {"softmax", SupportedLayerType::ACTIVATION_SOFTMAX},
+    {"mse", SupportedLayerType::LOSS_MSE},
+    {"crossentropy", SupportedLayerType::LOSS_CROSSENTROPY},
+    {"dropout", SupportedLayerType::DROPOUT},
+    {"transpose", SupportedLayerType::TRANSPOSE},
+    {"exp", SupportedLayerType::EXP},
+};
 
 VMGraph::VMGraph(VM *vm, TypeId type_id)
   : Object(vm, type_id)
@@ -78,7 +98,7 @@ void VMGraph::Step(DataType const &lr)
   graph_.ApplyGradients(grads);
 }
 
-void VMGraph::AddPlaceholder(VMPtrString const &name)
+void VMGraph::AddPlaceholder(const fetch::vm::Ptr<String> &name)
 {
   graph_.AddNode<fetch::ml::ops::PlaceHolder<MathTensorType>>(name->string(), {});
 }
@@ -154,6 +174,7 @@ Ptr<VMStateDict> VMGraph::StateDict()
 
 void VMGraph::Bind(Module &module)
 {
+  using VMPtrStringCRef = VMPtrString const &;
   module.CreateClassType<VMGraph>("Graph")
       .CreateConstructor(&VMGraph::Constructor)
       .CreateSerializeDefaultConstructor([](VM *vm, TypeId type_id) -> Ptr<VMGraph> {
@@ -163,6 +184,11 @@ void VMGraph::Bind(Module &module)
       .CreateMemberFunction("evaluate", &VMGraph::Evaluate)
       .CreateMemberFunction("backPropagate", &VMGraph::BackPropagate)
       .CreateMemberFunction("step", &VMGraph::Step)
+      .CreateMemberFunction("add", &VMGraph::AddLayer<>)                 // AddPlaceholder
+      .CreateMemberFunction("add", &VMGraph::AddLayer<VMPtrStringCRef>)  // AddSoftmax, AddRelu
+      .CreateMemberFunction(
+          "add", &VMGraph::AddLayer<VMPtrStringCRef, VMPtrStringCRef>)  // AddMeanSquareErrorLoss,
+                                                                        // AddCrossEntropyLoss
       .CreateMemberFunction("addPlaceholder", &VMGraph::AddPlaceholder)
       .CreateMemberFunction("addFullyConnected", &VMGraph::AddFullyConnected)
       .CreateMemberFunction("addConv1D", &VMGraph::AddConv1D)
@@ -226,6 +252,119 @@ fetch::vm::Ptr<VMGraph> VMGraph::DeserializeFromString(
 
   return vm_graph;
 }
+
+void VMGraph::AssertLayerTypeMatches(SupportedLayerType                layer,
+                                     std::vector<SupportedLayerType> &&valids) const
+{
+  static const std::map<SupportedLayerType, std::string> LAYER_NAMES_{
+      {SupportedLayerType::PLACEHOLDER, "placeholder"},
+      {SupportedLayerType::FULLY_CONNECTED, "fully_connected"},
+      {SupportedLayerType::CONV1D, "conv1d"},
+      {SupportedLayerType::ACTIVATION_RELU, "relu"},
+      {SupportedLayerType::ACTIVATION_SOFTMAX, "softmax"},
+      {SupportedLayerType::LOSS_MSE, "mse"},
+      {SupportedLayerType::LOSS_CROSSENTROPY, "crossentropy"},
+      {SupportedLayerType::DROPOUT, "dropout"},
+      {SupportedLayerType::TRANSPOSE, "transpose"},
+      {SupportedLayerType::EXP, "exp"},
+  };
+  if (std::find(valids.begin(), valids.end(), layer) == valids.end())
+  {
+    throw std::runtime_error("Invalid params specified for \"" + LAYER_NAMES_.at(layer) +
+                             "\" layer.");
+  }
+}
+
+/**
+ * Converts between user specified string and output type (e.g. activation, layer etc.)
+ * invokes VM runtime error if parsing failed.
+ * @param name user specified string to convert
+ * @param dict dictionary of existing entities
+ * @param errmsg preferred display name of expected type, that was not parsed
+ */
+template <typename T>
+inline T VMGraph::ParseName(std::string const &name, std::map<std::string, T> const &dict,
+                            std::string const &errmsg) const
+{
+  if (dict.find(name) == dict.end())
+  {
+    throw std::runtime_error("Unknown " + errmsg + " name : " + name);
+  }
+  return dict.at(name);
+}
+
+void VMGraph::AddLayerSpecificImpl(SupportedLayerType type, fetch::vm::Ptr<String> const &name)
+{
+  AssertLayerTypeMatches(type, {SupportedLayerType::PLACEHOLDER});
+  graph_.AddNode<fetch::ml::ops::PlaceHolder<MathTensorType>>(name->string(), {});
+}
+
+void VMGraph::AddLayerSpecificImpl(SupportedLayerType type, fetch::vm::Ptr<String> const &name,
+                                   fetch::vm::Ptr<String> const &input_name)
+{
+  AssertLayerTypeMatches(
+      type, {SupportedLayerType::ACTIVATION_RELU, SupportedLayerType::ACTIVATION_SOFTMAX});
+
+  static std::map<SupportedLayerType, ActivationAdder> const activation_adders_{
+      {SupportedLayerType::ACTIVATION_RELU,
+       std::bind(&VMGraph::AddActivation<fetch::ml::ops::Relu<fetch::math::Tensor<DataType>>>, this,
+                 _1, _2)},
+      {SupportedLayerType::ACTIVATION_SOFTMAX,
+       std::bind(&VMGraph::AddActivation<fetch::ml::ops::Softmax<fetch::math::Tensor<DataType>>>,
+                 this, _1, _2)},
+  };
+
+  activation_adders_.at(type)(name->string(), input_name->string());
+}
+
+void VMGraph::AddLayerSpecificImpl(SupportedLayerType type, fetch::vm::Ptr<String> const &name,
+                                   fetch::vm::Ptr<String> const &input_name,
+                                   fetch::vm::Ptr<String> const &labels)
+{
+  AssertLayerTypeMatches(type,
+                         {SupportedLayerType::LOSS_MSE, SupportedLayerType::LOSS_CROSSENTROPY});
+
+  static std::map<SupportedLayerType, LossAdder> const loss_adders_{
+      {SupportedLayerType::LOSS_MSE,
+       std::bind(&VMGraph::AddLoss<fetch::ml::ops::Relu<fetch::math::Tensor<DataType>>>, this, _1,
+                 _2, _3)},
+      {SupportedLayerType::LOSS_CROSSENTROPY,
+       std::bind(&VMGraph::AddLoss<fetch::ml::ops::Softmax<fetch::math::Tensor<DataType>>>, this,
+                 _1, _2, _3)},
+  };
+
+  loss_adders_.at(type)(name->string(), input_name->string(), labels->string());
+}
+
+template <typename... LayerArgs>
+void VMGraph::AddLayer(const fetch::vm::Ptr<String> &type, const fetch::vm::Ptr<String> &name,
+                       LayerArgs... args)
+{
+  try
+  {
+    SupportedLayerType const layer_type = ParseName(type->string(), layer_types_, "layer type");
+    AddLayerSpecificImpl(layer_type, name, args...);
+  }
+  catch (std::exception &e)
+  {
+    vm_->RuntimeError("Impossible to add layer : " + std::string(e.what()));
+    return;
+  }
+}
+
+template <typename ActivationType>
+void VMGraph::AddActivation(std::string const &name, std::string const &input_name)
+{
+  graph_.AddNode<ActivationType>(name, {input_name});
+}
+
+template <typename LossType>
+void VMGraph::AddLoss(std::string const &name, std::string const &input_name,
+                      std::string const &label_name)
+{
+  graph_.AddNode<LossType>(name, {input_name, label_name});
+}
+
 }  // namespace ml
 }  // namespace vm_modules
 }  // namespace fetch
