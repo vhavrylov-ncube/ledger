@@ -86,7 +86,7 @@ fetch::vm::Ptr<fetch::vm_modules::ml::model::VMModel> VmSequentialModel(
     else
     {
       model->Estimator().LayerAddDense(layer_type, input_size, output_size);
-      model->LayerAddDense(layer_type, input_size, output_size);
+      model->LayerAdd(layer_type, input_size, output_size);
     }
   }
 

@@ -53,12 +53,14 @@ enum class ModelCategory : uint8_t
 
 enum class SupportedLayerType : uint8_t
 {
+  UNKNOWN,
   DENSE,
   CONV1D,
   CONV2D,
   FLATTEN,
   DROPOUT,
-  ACTIVATION
+  ACTIVATION,
+  MAX_POOLING
 };
 
 class VMModel : public fetch::vm::Object
@@ -132,6 +134,9 @@ public:
 
   ModelEstimator &Estimator();
 
+  void LayerAdd(fetch::vm::Ptr<fetch::vm::String> const &layer, math::SizeType const &first_size,
+                math::SizeType const &second_size);
+
   void LayerAddDense(fetch::vm::Ptr<fetch::vm::String> const &layer, math::SizeType const &inputs,
                      math::SizeType const &hidden_nodes);
   void LayerAddDenseActivation(fetch::vm::Ptr<fetch::vm::String> const &layer,
@@ -147,10 +152,6 @@ public:
                               math::SizeType const &                   input_channels,
                               math::SizeType const &kernel_size, math::SizeType const &stride_size,
                               fetch::vm::Ptr<fetch::vm::String> const &activation);
-  void LayerAddDenseActivationExperimental(fetch::vm::Ptr<fetch::vm::String> const &layer,
-                                           math::SizeType const &                   inputs,
-                                           math::SizeType const &                   hidden_nodes,
-                                           fetch::vm::Ptr<fetch::vm::String> const &activation);
   void LayerAddFlatten(fetch::vm::Ptr<fetch::vm::String> const &layer);
 
   void LayerAddDropout(fetch::vm::Ptr<fetch::vm::String> const &layer,
@@ -180,10 +181,10 @@ private:
 
   void PrepareDataloader();
 
-  void LayerAddDenseActivationImplementation(fetch::vm::Ptr<fetch::vm::String> const &layer,
-                                             math::SizeType const &                   inputs,
-                                             math::SizeType const &                   hidden_nodes,
-                                             fetch::ml::details::ActivationType       activation);
+  void LayerAddDense(math::SizeType const &inputs, math::SizeType const &hidden_nodes,
+                     fetch::ml::details::ActivationType activation);
+
+  void LayerAddMaxPooling(math::SizeType const &kernel_size, math::SizeType const &stride_size);
 
   void LayerAddConvActivationImplementation(fetch::vm::Ptr<fetch::vm::String> const &layer,
                                             math::SizeType const &             output_channels,

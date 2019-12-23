@@ -41,7 +41,6 @@ using fetch::ml::ops::LossType;
 using fetch::ml::ops::MetricType;
 using fetch::ml::OptimiserType;
 using fetch::ml::details::ActivationType;
-using VMPtrString = Ptr<String>;
 
 std::map<std::string, SupportedLayerType> const VMModel::layer_types_{
     {"dense", SupportedLayerType::DENSE},     {"conv1d", SupportedLayerType::CONV1D},
@@ -96,7 +95,7 @@ VMModel::VMModel(VM *vm, TypeId type_id)
   Init("none");
 }
 
-VMModel::VMModel(VM *vm, TypeId type_id, fetch::vm::Ptr<fetch::vm::String> const &model_category)
+VMModel::VMModel(VM *vm, TypeId type_id, Ptr<String> const &model_category)
   : Object(vm, type_id)
   , estimator_{*this}
 {
@@ -127,8 +126,7 @@ void VMModel::Init(std::string const &model_category)
   compiled_ = false;
 }
 
-Ptr<VMModel> VMModel::Constructor(VM *vm, TypeId type_id,
-                                  fetch::vm::Ptr<fetch::vm::String> const &model_category)
+Ptr<VMModel> VMModel::Constructor(VM *vm, TypeId type_id, Ptr<String> const &model_category)
 {
   return Ptr<VMModel>{new VMModel(vm, type_id, model_category)};
 }
@@ -176,7 +174,7 @@ void VMModel::CompileSequentialImplementation(Ptr<String> const &loss, Ptr<Strin
     SequentialModelPtr  me             = GetMeAsSequentialIfPossible();
     if (me->LayerCount() == 0)
     {
-      vm_->RuntimeError("Can not compile an empty sequential model, please add layers first.");
+      RuntimeError("Can not compile an empty sequential model, please add layers first.");
       return;
     }
     PrepareDataloader();
@@ -185,7 +183,7 @@ void VMModel::CompileSequentialImplementation(Ptr<String> const &loss, Ptr<Strin
   }
   catch (std::exception const &e)
   {
-    vm_->RuntimeError("Compilation of a sequential model failed : " + std::string(e.what()));
+    RuntimeError("Compilation of a sequential model failed : " + std::string(e.what()));
     return;
   }
   compiled_ = true;
@@ -196,14 +194,14 @@ void VMModel::CompileSequentialImplementation(Ptr<String> const &loss, Ptr<Strin
  * @param optimiser a valid optimiser name ["adam", "sgd" ...]
  * @param layer_shapes a list of layer shapes, min 2: Input and Output shape correspondingly.
  */
-void VMModel::CompileSimple(fetch::vm::Ptr<fetch::vm::String> const &        optimiser,
+void VMModel::CompileSimple(Ptr<String> const &                              optimiser,
                             fetch::vm::Ptr<vm::Array<math::SizeType>> const &layer_shapes)
 {
   std::size_t const total_layer_shapes = layer_shapes->elements.size();
   if (total_layer_shapes < min_total_layer_shapes)
   {
-    vm_->RuntimeError("Regressor/classifier model compilation requires providing at least " +
-                      std::to_string(min_total_layer_shapes) + " layer shapes (input, output)!");
+    RuntimeError("Regressor/classifier model compilation requires providing at least " +
+                 std::to_string(min_total_layer_shapes) + " layer shapes (input, output)!");
     return;
   }
 
@@ -225,7 +223,7 @@ void VMModel::CompileSimple(fetch::vm::Ptr<fetch::vm::String> const &        opt
     break;
 
   default:
-    vm_->RuntimeError(
+    RuntimeError(
         "Only regressor/classifier model types accept layer shapes list as a compilation "
         "parameter!");
     return;
@@ -240,7 +238,7 @@ void VMModel::CompileSimple(fetch::vm::Ptr<fetch::vm::String> const &        opt
     OptimiserType const optimiser_type = ParseName(optimiser->string(), optimisers_, "optimiser");
     if (optimiser_type != OptimiserType::ADAM)
     {
-      vm_->RuntimeError(
+      RuntimeError(
           R"(Wrong optimiser, a regressor/classifier model can use only "adam", while given : )" +
           optimiser->string());
       return;
@@ -249,8 +247,7 @@ void VMModel::CompileSimple(fetch::vm::Ptr<fetch::vm::String> const &        opt
   }
   catch (std::exception const &e)
   {
-    vm_->RuntimeError("Compilation of a regressor/classifier model failed : " +
-                      std::string(e.what()));
+    RuntimeError("Compilation of a regressor/classifier model failed : " + std::string(e.what()));
     return;
   }
   compiled_ = true;
@@ -306,8 +303,8 @@ void VMModel::Bind(Module &module, bool const experimental_enabled)
       .CreateSerializeDefaultConstructor([](VM *vm, TypeId type_id) -> Ptr<VMModel> {
         return Ptr<VMModel>{new VMModel(vm, type_id)};
       })
-      .CreateMemberFunction("add", &VMModel::LayerAddDense,
-                            UseEstimator(&ModelEstimator::LayerAddDense))
+      .CreateMemberFunction("add", &VMModel::LayerAdd,
+                            UseEstimator(&ModelEstimator::LayerAddDense))  // TODO: estimation!
       .CreateMemberFunction("add", &VMModel::LayerAddDenseActivation,
                             UseEstimator(&ModelEstimator::LayerAddDenseActivation))
       .CreateMemberFunction("compile", &VMModel::CompileSequential,
@@ -337,9 +334,7 @@ void VMModel::Bind(Module &module, bool const experimental_enabled)
         .CreateMemberFunction("add", &VMModel::LayerAddActivation,
                               UseEstimator(&ModelEstimator::LayerAddActivation))
         .CreateMemberFunction("compile", &VMModel::CompileSimple,
-                              UseEstimator(&ModelEstimator::CompileSimple))
-        .CreateMemberFunction("addExperimental", &VMModel::LayerAddDenseActivationExperimental,
-                              UseEstimator(&ModelEstimator::LayerAddDenseActivationExperimental));
+                              UseEstimator(&ModelEstimator::CompileSimple));
   }
 }
 
@@ -355,26 +350,23 @@ bool VMModel::SerializeTo(serializers::MsgPackSerializer &buffer)
   // can't serialise uncompiled model
   if (!compiled_)
   {
-    vm_->RuntimeError("cannot set state with uncompiled model");
+    RuntimeError("cannot set state with uncompiled model");
   }
   // can't serialise without a model
   else if (!model_)
   {
-    vm_->RuntimeError("cannot set state with model undefined");
+    RuntimeError("cannot set state with model undefined");
   }
-
   // can't serialise without dataloader ready
   else if (!model_->GetDataloader())
   {
-    vm_->RuntimeError("cannot set state with dataloader not set");
+    RuntimeError("cannot set state with dataloader not set");
   }
-
   // can't serialise without optimiser ready
   else if (!model_->GetOptimiser())
   {
-    vm_->RuntimeError("cannot set state with optimiser not set");
+    RuntimeError("cannot set state with optimiser not set");
   }
-
   // should be fine to serialise
   else
   {
@@ -416,8 +408,8 @@ bool VMModel::DeserializeFrom(serializers::MsgPackSerializer &buffer)
 
   if (model_category_name.empty())
   {
-    vm_->RuntimeError("Cannot parse a valid model category from given number : " +
-                      std::to_string(model_category_int));
+    RuntimeError("Cannot parse a valid model category from given number : " +
+                 std::to_string(model_category_int));
     return false;
   }
 
@@ -461,7 +453,7 @@ bool VMModel::DeserializeFrom(serializers::MsgPackSerializer &buffer)
   return true;
 }
 
-fetch::vm::Ptr<fetch::vm::String> VMModel::SerializeToString()
+Ptr<String> VMModel::SerializeToString()
 {
   serializers::MsgPackSerializer b;
   SerializeTo(b);
@@ -469,8 +461,7 @@ fetch::vm::Ptr<fetch::vm::String> VMModel::SerializeToString()
   return Ptr<String>{new fetch::vm::String(vm_, static_cast<std::string>(byte_array_data))};
 }
 
-fetch::vm::Ptr<VMModel> VMModel::DeserializeFromString(
-    fetch::vm::Ptr<fetch::vm::String> const &model_string)
+fetch::vm::Ptr<VMModel> VMModel::DeserializeFromString(Ptr<String> const &model_string)
 {
   byte_array::ConstByteArray b(model_string->string());
   b = byte_array::FromBase64(b);
@@ -495,6 +486,11 @@ void VMModel::AssertLayerTypeMatches(SupportedLayerType                layer,
       {SupportedLayerType::DENSE, "dense"},
       {SupportedLayerType::CONV1D, "conv1d"},
       {SupportedLayerType::CONV2D, "conv2d"},
+      {SupportedLayerType::DROPOUT, "dropout"},
+      {SupportedLayerType::FLATTEN, "flatten"},
+      {SupportedLayerType::MAX_POOLING, "max pooling"},
+      {SupportedLayerType::ACTIVATION, "activation"},
+      {SupportedLayerType::UNKNOWN, "unknown"},
   };
   if (std::find(valids.begin(), valids.end(), layer) == valids.end())
   {
@@ -512,76 +508,77 @@ VMModel::SequentialModelPtr VMModel::GetMeAsSequentialIfPossible()
   return std::dynamic_pointer_cast<fetch::ml::model::Sequential<TensorType>>(model_);
 }
 
-void VMModel::LayerAddDense(fetch::vm::Ptr<fetch::vm::String> const &layer,
-                            math::SizeType const &inputs, math::SizeType const &hidden_nodes)
-{
-  LayerAddDenseActivationImplementation(layer, inputs, hidden_nodes, ActivationType::NOTHING);
-}
-
-void VMModel::LayerAddDenseActivation(fetch::vm::Ptr<fetch::vm::String> const &layer,
-                                      math::SizeType const &                   inputs,
-                                      math::SizeType const &                   hidden_nodes,
-                                      fetch::vm::Ptr<fetch::vm::String> const &activation)
+void VMModel::LayerAdd(Ptr<String> const &layer, SizeType const &first_size,
+                       SizeType const &second_size)
 {
   try
   {
-    fetch::ml::details::ActivationType activation_type =
-        ParseName(activation->string(), activations_, "activation function");
-
-    if (activation_type == fetch::ml::details::ActivationType::RELU)
+    SupportedLayerType const layer_type =
+        ParseName(layer->string(), layer_types_, LAYER_TYPE_MESSAGE);
+    switch (layer_type)
     {
-      LayerAddDenseActivationImplementation(layer, inputs, hidden_nodes, activation_type);
-    }
-    else
-    {
-      vm_->RuntimeError("cannot add activation type : " + activation->string());
+    case SupportedLayerType::DENSE:
+      LayerAddDense(first_size, second_size, ActivationType::NOTHING);
+      return;
+    case SupportedLayerType::MAX_POOLING:
+      LayerAddMaxPooling(first_size, second_size);
+      return;
+    default:
+      RuntimeError("Impossible to add layer " + layer->string() +
+                   " : invalid arguments or layer is not supported.");
+      return;
     }
   }
   catch (std::exception const &e)
   {
-    vm_->RuntimeError(std::string(e.what()));
+    RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
+    return;
   }
 }
 
-void VMModel::LayerAddDenseActivationExperimental(
-    fetch::vm::Ptr<fetch::vm::String> const &layer, math::SizeType const &inputs,
-    math::SizeType const &hidden_nodes, fetch::vm::Ptr<fetch::vm::String> const &activation)
-{
-  try
-  {
-    fetch::ml::details::ActivationType activation_type =
-        ParseName(activation->string(), activations_, "activation function");
-    LayerAddDenseActivationImplementation(layer, inputs, hidden_nodes, activation_type);
-  }
-  catch (std::exception const &e)
-  {
-    vm_->RuntimeError(std::string(e.what()));
-  }
-}
-
-void VMModel::LayerAddDenseActivationImplementation(fetch::vm::Ptr<fetch::vm::String> const &layer,
-                                                    math::SizeType const &                   inputs,
-                                                    math::SizeType const &             hidden_nodes,
-                                                    fetch::ml::details::ActivationType activation)
+void VMModel::LayerAddDenseActivation(Ptr<String> const &layer, math::SizeType const &inputs,
+                                      math::SizeType const &hidden_nodes,
+                                      Ptr<String> const &   activation)
 {
   try
   {
     SupportedLayerType const layer_type =
         ParseName(layer->string(), layer_types_, LAYER_TYPE_MESSAGE);
     AssertLayerTypeMatches(layer_type, {SupportedLayerType::DENSE});
-    SequentialModelPtr me = GetMeAsSequentialIfPossible();
-    me->Add<fetch::ml::layers::FullyConnected<TensorType>>(inputs, hidden_nodes, activation);
-    compiled_ = false;
+    ActivationType activation_type =
+        ParseName(activation->string(), activations_, "activation function");
+
+    if (activation_type != ActivationType::RELU)
+    {
+      RuntimeError("cannot add activation type : " + activation->string());
+      return;
+    }
+
+    LayerAddDense(inputs, hidden_nodes, activation_type);
   }
   catch (std::exception const &e)
   {
-    vm_->RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
-    return;
+    RuntimeError(std::string(e.what()));
   }
 }
 
-void VMModel::LayerAddConv(fetch::vm::Ptr<fetch::vm::String> const &layer,
-                           math::SizeType const &                   output_channels,
+void VMModel::LayerAddDense(SizeType const &inputs, SizeType const &hidden_nodes,
+                            ActivationType activation)
+{
+  SequentialModelPtr me = GetMeAsSequentialIfPossible();
+  me->Add<fetch::ml::layers::FullyConnected<TensorType>>(inputs, hidden_nodes, activation);
+  compiled_ = false;
+}
+
+void VMModel::LayerAddMaxPooling(const math::SizeType &kernel_size,
+                                 const math::SizeType &stride_size)
+{
+  SequentialModelPtr me = GetMeAsSequentialIfPossible();
+  me->Add<fetch::ml::ops::MaxPool<TensorType>>(kernel_size, stride_size);
+  compiled_ = false;
+}
+
+void VMModel::LayerAddConv(Ptr<String> const &layer, math::SizeType const &output_channels,
                            math::SizeType const &input_channels, math::SizeType const &kernel_size,
                            math::SizeType const &stride_size)
 {
@@ -589,31 +586,32 @@ void VMModel::LayerAddConv(fetch::vm::Ptr<fetch::vm::String> const &layer,
                                        stride_size, ActivationType::NOTHING);
 }
 
-void VMModel::LayerAddConvActivation(fetch::vm::Ptr<fetch::vm::String> const &layer,
-                                     math::SizeType const &                   output_channels,
-                                     math::SizeType const &                   input_channels,
-                                     math::SizeType const &                   kernel_size,
-                                     math::SizeType const &                   stride_size,
-                                     fetch::vm::Ptr<fetch::vm::String> const &activation)
+void VMModel::LayerAddConvActivation(Ptr<String> const &   layer,
+                                     math::SizeType const &output_channels,
+                                     math::SizeType const &input_channels,
+                                     math::SizeType const &kernel_size,
+                                     math::SizeType const &stride_size,
+                                     Ptr<String> const &   activation)
 {
   try
   {
-    LayerAddConvActivationImplementation(
-        layer, output_channels, input_channels, kernel_size, stride_size,
-        ParseName(activation->string(), activations_, "activation function"));
+    ActivationType const activation_type =
+        ParseName(activation->string(), activations_, "activation function");
+    LayerAddConvActivationImplementation(layer, output_channels, input_channels, kernel_size,
+                                         stride_size, activation_type);
   }
   catch (std::exception const &e)
   {
-    vm_->RuntimeError(std::string(e.what()));
+    RuntimeError(std::string(e.what()));
   }
 }
 
-void VMModel::LayerAddConvActivationImplementation(fetch::vm::Ptr<fetch::vm::String> const &layer,
+void VMModel::LayerAddConvActivationImplementation(Ptr<String> const &   layer,
                                                    math::SizeType const &output_channels,
                                                    math::SizeType const &input_channels,
                                                    math::SizeType const &kernel_size,
                                                    math::SizeType const &stride_size,
-                                                   fetch::ml::details::ActivationType activation)
+                                                   ActivationType        activation)
 {
   try
   {
@@ -635,12 +633,12 @@ void VMModel::LayerAddConvActivationImplementation(fetch::vm::Ptr<fetch::vm::Str
   }
   catch (std::exception const &e)
   {
-    vm_->RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
+    RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
     return;
   }
 }
 
-void VMModel::LayerAddFlatten(const fetch::vm::Ptr<String> &layer)
+void VMModel::LayerAddFlatten(const Ptr<String> &layer)
 {
   try
   {
@@ -653,13 +651,12 @@ void VMModel::LayerAddFlatten(const fetch::vm::Ptr<String> &layer)
   }
   catch (std::exception const &e)
   {
-    vm_->RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
+    RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
     return;
   }
 }
 
-void VMModel::LayerAddDropout(const fetch::vm::Ptr<String> &layer,
-                              const math::DataType &        probability)
+void VMModel::LayerAddDropout(const Ptr<String> &layer, const math::DataType &probability)
 {
   try
   {
@@ -675,7 +672,7 @@ void VMModel::LayerAddDropout(const fetch::vm::Ptr<String> &layer,
       std::stringstream ss;
       ss << IMPOSSIBLE_ADD_MESSAGE << "dropout probability " << probability
          << " is out of allowed range [0..1]";
-      vm_->RuntimeError(ss.str());
+      RuntimeError(ss.str());
       return;
     }
     DataType const keep_probability = DataType{1} - probability;
@@ -685,14 +682,14 @@ void VMModel::LayerAddDropout(const fetch::vm::Ptr<String> &layer,
   }
   catch (std::exception const &e)
   {
-    vm_->RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
+    RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
     return;
   }
 }
 
-void VMModel::LayerAddActivation(const fetch::vm::Ptr<String> &layer,
-                                 const fetch::vm::Ptr<String> &activation_name)
+void VMModel::LayerAddActivation(const Ptr<String> &layer, const Ptr<String> &activation_name)
 {
+  using namespace fetch::ml::ops;
   try
   {
     SupportedLayerType const layer_type =
@@ -705,35 +702,35 @@ void VMModel::LayerAddActivation(const fetch::vm::Ptr<String> &layer,
     switch (activation)
     {
     case ActivationType::RELU:
-      me->Add<fetch::ml::ops::Relu<TensorType>>();
+      me->Add<Relu<TensorType>>();
       break;
     case ActivationType::GELU:
-      me->Add<fetch::ml::ops::Gelu<TensorType>>();
+      me->Add<Gelu<TensorType>>();
       break;
     case ActivationType::SIGMOID:
-      me->Add<fetch::ml::ops::Sigmoid<TensorType>>();
+      me->Add<Sigmoid<TensorType>>();
       break;
     case ActivationType::SOFTMAX:
-      me->Add<fetch::ml::ops::Softmax<TensorType>>();
+      me->Add<Softmax<TensorType>>();
       break;
     case ActivationType::LEAKY_RELU:
-      me->Add<fetch::ml::ops::LeakyRelu<TensorType>>();
+      me->Add<LeakyRelu<TensorType>>();
       break;
     case ActivationType::LOG_SIGMOID:
-      me->Add<fetch::ml::ops::LogSigmoid<TensorType>>();
+      me->Add<LogSigmoid<TensorType>>();
       break;
     case ActivationType::LOG_SOFTMAX:
-      me->Add<fetch::ml::ops::LogSoftmax<TensorType>>();
+      me->Add<LogSoftmax<TensorType>>();
       break;
     default:
-      vm_->RuntimeError("Can not add Activation layer with activation type " +
-                        activation_name->string());
+      RuntimeError("Can not add Activation layer with activation type " +
+                   activation_name->string());
       return;
     }
   }
   catch (std::exception const &e)
   {
-    vm_->RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
+    RuntimeError(IMPOSSIBLE_ADD_MESSAGE + std::string(e.what()));
     return;
   }
 }
@@ -749,6 +746,7 @@ void VMModel::PrepareDataloader()
   data_loader->SetRandomMode(true);
   model_->SetDataloader(std::move(data_loader));
 }
+
 }  // namespace model
 }  // namespace ml
 }  // namespace vm_modules
