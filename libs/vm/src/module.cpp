@@ -303,6 +303,7 @@ Module::Module()
             return ret;
           })
       .CreateInstantiationType<Array<Ptr<Fixed128>>>()
+      .CreateInstantiationType<Array<Ptr<UInt256Wrapper>>>()
       .CreateInstantiationType<Array<Ptr<String>>>()
       .CreateInstantiationType<Array<Ptr<Address>>>();
 

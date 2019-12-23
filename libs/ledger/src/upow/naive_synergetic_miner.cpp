@@ -16,8 +16,6 @@
 //
 //------------------------------------------------------------------------------
 
-#include "ledger/upow/naive_synergetic_miner.hpp"
-
 #include "core/digest.hpp"
 #include "core/serializers/main_serializer.hpp"
 #include "ledger/chaincode/contract_context.hpp"
@@ -25,6 +23,7 @@
 #include "ledger/chaincode/smart_contract_factory.hpp"
 #include "ledger/chaincode/smart_contract_manager.hpp"
 #include "ledger/state_adapter.hpp"
+#include "ledger/upow/naive_synergetic_miner.hpp"
 #include "ledger/upow/synergetic_base_types.hpp"
 #include "ledger/upow/work.hpp"
 #include "logging/logging.hpp"

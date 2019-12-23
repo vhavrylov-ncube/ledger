@@ -16,8 +16,6 @@
 //
 //------------------------------------------------------------------------------
 
-#include "vm_modules/core/structured_data.hpp"
-
 #include "core/byte_array/const_byte_array.hpp"
 #include "core/byte_array/decoders.hpp"
 #include "core/byte_array/encoders.hpp"
@@ -27,6 +25,7 @@
 #include "vm/array.hpp"
 #include "vm/fixed.hpp"
 #include "vm/module.hpp"
+#include "vm_modules/core/structured_data.hpp"
 #include "vm_modules/math/tensor/tensor.hpp"
 
 #include <sstream>
@@ -492,7 +491,7 @@ void StructuredData::SetArray(vm::Ptr<vm::String> const &s, vm::Ptr<vm::Array<T>
   }
   catch (std::exception const &ex)
   {
-    vm_->RuntimeError("Unable to set array of variables");
+    vm_->RuntimeError("Unable to set array of variables : " + std::string(ex.what()));
   }
 }
 

@@ -486,6 +486,9 @@ TEST_F(StateTests, test_serialisation_of_structured_data)
       var arr_u64 = Array<UInt64>(1);
       arr_u64[0] = 200u64;
 
+      var arr_u256 = Array<UInt256>(1);
+      arr_u256[0] = UInt256(123456u64);
+
       var data = StructuredData();
       data.set("string", "bar");
       data.set("i32", 256i32);
@@ -499,6 +502,7 @@ TEST_F(StateTests, test_serialisation_of_structured_data)
       data.set("arr_i64", arr_i64);
       data.set("arr_u32", arr_u32);
       data.set("arr_u64", arr_u64);
+      data.set("arr_u256", arr_u256);
 
       var state = State<StructuredData>("state_data");
       state.set(data);
@@ -546,6 +550,10 @@ TEST_F(StateTests, test_serialisation_of_structured_data)
       var arr_u64 = data.getArrayUInt64("arr_u64");
       assert(arr_u64.count() == 1);
       assert(arr_u64[0] == 200u64);
+
+      var arr_u256 = data.getArrayUInt64("arr_u256");
+      assert(arr_u256.count() == 1);
+      assert(arr_u256[0] == 123456u64);
 
       return data.getBuffer("buffer");
     endfunction

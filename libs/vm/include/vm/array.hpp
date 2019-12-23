@@ -19,6 +19,7 @@
 
 #include "core/serializers/base_types.hpp"
 #include "vectorise/fixed_point/fixed_point.hpp"
+#include "vm/bignumber.hpp"
 #include "vm/fixed.hpp"
 #include "vm/vm.hpp"
 
@@ -440,6 +441,11 @@ Ptr<IArray> IArray::Construct(VM *vm, TypeId type_id, Args &&... args)
   {
     return Ptr<IArray>{
         new Array<Ptr<Fixed128>>(vm, type_id, element_type_id, std::forward<Args>(args)...)};
+  }
+  case TypeIds::UInt256:
+  {
+    return Ptr<IArray>{
+        new Array<Ptr<UInt256Wrapper>>(vm, type_id, element_type_id, std::forward<Args>(args)...)};
   }
   default:
   {

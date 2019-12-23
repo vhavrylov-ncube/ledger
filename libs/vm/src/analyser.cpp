@@ -243,6 +243,7 @@ void Analyser::UnInitialise()
   uint32_type_              = nullptr;
   int64_type_               = nullptr;
   uint64_type_              = nullptr;
+  uint256_type_             = nullptr;
   fixed32_type_             = nullptr;
   fixed64_type_             = nullptr;
   fixed128_type_            = nullptr;
@@ -445,13 +446,15 @@ void Analyser::ValidateBlock(BlockNodePtr const &block_node, LedgerRestrictionMe
   {
     switch (child->node_kind)
     {
-    case NodeKind::File: {
+    case NodeKind::File:
+    {
       BlockNodePtr file_node = ConvertToBlockNodePtr(child);
       filename_              = file_node->text;
       ValidateBlock(file_node, metadata);
       break;
     }
-    case NodeKind::ContractDefinition: {
+    case NodeKind::ContractDefinition:
+    {
       ExpressionNodePtr contract_name_node = ConvertToExpressionNodePtr(child->children[0]);
       if (contract_name_node->type)
       {
@@ -459,7 +462,8 @@ void Analyser::ValidateBlock(BlockNodePtr const &block_node, LedgerRestrictionMe
       }
       break;
     }
-    case NodeKind::ContractFunction: {
+    case NodeKind::ContractFunction:
+    {
       ExpressionNodePtr function_name_node = ConvertToExpressionNodePtr(child->children[1]);
       if (function_name_node->function)
       {
@@ -468,7 +472,8 @@ void Analyser::ValidateBlock(BlockNodePtr const &block_node, LedgerRestrictionMe
       }
       break;
     }
-    case NodeKind::FreeFunctionDefinition: {
+    case NodeKind::FreeFunctionDefinition:
+    {
       ExpressionNodePtr function_name_node = ConvertToExpressionNodePtr(child->children[1]);
       if (function_name_node->function)
       {
@@ -477,7 +482,8 @@ void Analyser::ValidateBlock(BlockNodePtr const &block_node, LedgerRestrictionMe
       }
       break;
     }
-    default: {
+    default:
+    {
       break;
     }
     }  // switch
@@ -532,7 +538,8 @@ void Analyser::ValidateFunctionPrototype(NodePtr const &            function_nod
 
   switch (function_node->node_kind)
   {
-  case NodeKind::ContractFunction: {
+  case NodeKind::ContractFunction:
+  {
     if (HasAnnotation(annotations, ACTION_ANNOTATION))
     {
       is_action = true;
@@ -543,7 +550,8 @@ void Analyser::ValidateFunctionPrototype(NodePtr const &            function_nod
     }
   }
   break;
-  case NodeKind::FreeFunctionDefinition: {
+  case NodeKind::FreeFunctionDefinition:
+  {
     if (HasAnnotation(annotations, ACTION_ANNOTATION))
     {
       is_action = true;
@@ -874,26 +882,31 @@ void Analyser::BuildBlock(BlockNodePtr const &block_node)
   {
     switch (child->node_kind)
     {
-    case NodeKind::File: {
+    case NodeKind::File:
+    {
       BlockNodePtr file_node = ConvertToBlockNodePtr(child);
       file_node->symbols     = CreateSymbolTable();
       filename_              = file_node->text;
       BuildBlock(file_node);
       break;
     }
-    case NodeKind::ContractDefinition: {
+    case NodeKind::ContractDefinition:
+    {
       BuildContractDefinition(ConvertToBlockNodePtr(child));
       break;
     }
-    case NodeKind::StructDefinition: {
+    case NodeKind::StructDefinition:
+    {
       BuildStructDefinition(ConvertToBlockNodePtr(child));
       break;
     }
-    case NodeKind::FreeFunctionDefinition: {
+    case NodeKind::FreeFunctionDefinition:
+    {
       BuildFreeFunctionDefinition(ConvertToBlockNodePtr(child));
       break;
     }
-    case NodeKind::IfStatement: {
+    case NodeKind::IfStatement:
+    {
       for (NodePtr const &c : child->children)
       {
         BlockNodePtr block = ConvertToBlockNodePtr(c);
@@ -907,13 +920,15 @@ void Analyser::BuildBlock(BlockNodePtr const &block_node)
     case NodeKind::ForStatement:
     case NodeKind::If:
     case NodeKind::ElseIf:
-    case NodeKind::Else: {
+    case NodeKind::Else:
+    {
       BlockNodePtr block = ConvertToBlockNodePtr(child);
       block->symbols     = CreateSymbolTable();
       BuildBlock(block);
       break;
     }
-    default: {
+    default:
+    {
       break;
     }
     }  // switch
@@ -1013,41 +1028,50 @@ void Analyser::PreAnnotateBlock(BlockNodePtr const &block_node)
   {
     switch (child->node_kind)
     {
-    case NodeKind::File: {
+    case NodeKind::File:
+    {
       BlockNodePtr file_node = ConvertToBlockNodePtr(child);
       filename_              = file_node->text;
       PreAnnotateBlock(file_node);
       break;
     }
-    case NodeKind::PersistentStatement: {
+    case NodeKind::PersistentStatement:
+    {
       PreAnnotatePersistentStatement(child);
       break;
     }
-    case NodeKind::ContractDefinition: {
+    case NodeKind::ContractDefinition:
+    {
       PreAnnotateContractDefinition(ConvertToBlockNodePtr(child));
       break;
     }
-    case NodeKind::ContractFunction: {
+    case NodeKind::ContractFunction:
+    {
       PreAnnotateContractFunction(block_node, child);
       break;
     }
-    case NodeKind::StructDefinition: {
+    case NodeKind::StructDefinition:
+    {
       PreAnnotateStructDefinition(ConvertToBlockNodePtr(child));
       break;
     }
-    case NodeKind::MemberFunctionDefinition: {
+    case NodeKind::MemberFunctionDefinition:
+    {
       PreAnnotateMemberFunctionDefinition(block_node, ConvertToBlockNodePtr(child));
       break;
     }
-    case NodeKind::MemberVarDeclarationStatement: {
+    case NodeKind::MemberVarDeclarationStatement:
+    {
       PreAnnotateMemberVarDeclarationStatement(block_node, child);
       break;
     }
-    case NodeKind::FreeFunctionDefinition: {
+    case NodeKind::FreeFunctionDefinition:
+    {
       PreAnnotateFreeFunctionDefinition(ConvertToBlockNodePtr(child));
       break;
     }
-    default: {
+    default:
+    {
       break;
     }
     }  // switch
@@ -1475,7 +1499,8 @@ void Analyser::AnnotateBlock(BlockNodePtr const &block_node)
   {
     switch (child->node_kind)
     {
-    case NodeKind::File: {
+    case NodeKind::File:
+    {
       BlockNodePtr file_node = ConvertToBlockNodePtr(child);
       filename_              = file_node->text;
       AnnotateBlock(file_node);
@@ -1483,92 +1508,111 @@ void Analyser::AnnotateBlock(BlockNodePtr const &block_node)
     }
     case NodeKind::PersistentStatement:
     case NodeKind::ContractDefinition:
-    case NodeKind::ContractFunction: {
+    case NodeKind::ContractFunction:
+    {
       // nothing to do
       break;
     }
-    case NodeKind::StructDefinition: {
+    case NodeKind::StructDefinition:
+    {
       AnnotateStructDefinition(ConvertToBlockNodePtr(child));
       break;
     }
     case NodeKind::MemberFunctionDefinition:
-    case NodeKind::FreeFunctionDefinition: {
+    case NodeKind::FreeFunctionDefinition:
+    {
       AnnotateFunctionDefinition(ConvertToBlockNodePtr(child));
       break;
     }
-    case NodeKind::MemberVarDeclarationStatement: {
+    case NodeKind::MemberVarDeclarationStatement:
+    {
       // nothing to do
       break;
     }
-    case NodeKind::WhileStatement: {
+    case NodeKind::WhileStatement:
+    {
       AnnotateWhileStatement(ConvertToBlockNodePtr(child));
       break;
     }
-    case NodeKind::ForStatement: {
+    case NodeKind::ForStatement:
+    {
       AnnotateForStatement(ConvertToBlockNodePtr(child));
       break;
     }
-    case NodeKind::IfStatement: {
+    case NodeKind::IfStatement:
+    {
       AnnotateIfStatement(child);
       break;
     }
-    case NodeKind::UseStatement: {
+    case NodeKind::UseStatement:
+    {
       AnnotateUseStatement(block_node, child);
       break;
     }
-    case NodeKind::UseAnyStatement: {
+    case NodeKind::UseAnyStatement:
+    {
       AnnotateUseAnyStatement(block_node, child);
       break;
     }
-    case NodeKind::ContractStatement: {
+    case NodeKind::ContractStatement:
+    {
       AnnotateContractStatement(block_node, child);
       break;
     }
     case NodeKind::LocalVarDeclarationStatement:
     case NodeKind::LocalVarDeclarationTypedAssignmentStatement:
-    case NodeKind::LocalVarDeclarationTypelessAssignmentStatement: {
+    case NodeKind::LocalVarDeclarationTypelessAssignmentStatement:
+    {
       AnnotateLocalVarStatement(block_node, child);
       break;
     }
-    case NodeKind::ReturnStatement: {
+    case NodeKind::ReturnStatement:
+    {
       AnnotateReturnStatement(child);
       break;
     }
-    case NodeKind::BreakStatement: {
+    case NodeKind::BreakStatement:
+    {
       if (loops_.empty())
       {
         AddError(child->line, "break statement is not inside a while or for loop");
       }
       break;
     }
-    case NodeKind::ContinueStatement: {
+    case NodeKind::ContinueStatement:
+    {
       if (loops_.empty())
       {
         AddError(child->line, "continue statement is not inside a while or for loop");
       }
       break;
     }
-    case NodeKind::Assign: {
+    case NodeKind::Assign:
+    {
       AnnotateAssignOp(ConvertToExpressionNodePtr(child));
       break;
     }
     case NodeKind::InplaceAdd:
     case NodeKind::InplaceSubtract:
     case NodeKind::InplaceMultiply:
-    case NodeKind::InplaceDivide: {
+    case NodeKind::InplaceDivide:
+    {
       AnnotateInplaceArithmeticOp(ConvertToExpressionNodePtr(child));
       break;
     }
-    case NodeKind::InplaceModulo: {
+    case NodeKind::InplaceModulo:
+    {
       AnnotateInplaceModuloOp(ConvertToExpressionNodePtr(child));
       break;
     }
     case NodeKind::Null:
-    case NodeKind::InitialiserList: {
+    case NodeKind::InitialiserList:
+    {
       AddError(child->line, "unable to infer type");
       break;
     }
-    default: {
+    default:
+    {
       AnnotateExpression(ConvertToExpressionNodePtr(child));
       break;
     }
@@ -2103,7 +2147,8 @@ bool Analyser::InternalAnnotateExpression(ExpressionNodePtr const &node)
   switch (node->node_kind)
   {
   case NodeKind::Identifier:
-  case NodeKind::Template: {
+  case NodeKind::Template:
+  {
     SymbolPtr symbol = FindSymbol(node);
     if (!symbol)
     {
@@ -2137,65 +2182,80 @@ bool Analyser::InternalAnnotateExpression(ExpressionNodePtr const &node)
     }
     break;
   }
-  case NodeKind::Integer8: {
+  case NodeKind::Integer8:
+  {
     SetRVExpression(node, int8_type_);
     break;
   }
-  case NodeKind::UnsignedInteger8: {
+  case NodeKind::UnsignedInteger8:
+  {
     SetRVExpression(node, uint8_type_);
     break;
   }
-  case NodeKind::Integer16: {
+  case NodeKind::Integer16:
+  {
     SetRVExpression(node, int16_type_);
     break;
   }
-  case NodeKind::UnsignedInteger16: {
+  case NodeKind::UnsignedInteger16:
+  {
     SetRVExpression(node, uint16_type_);
     break;
   }
-  case NodeKind::Integer32: {
+  case NodeKind::Integer32:
+  {
     SetRVExpression(node, int32_type_);
     break;
   }
-  case NodeKind::UnsignedInteger32: {
+  case NodeKind::UnsignedInteger32:
+  {
     SetRVExpression(node, uint32_type_);
     break;
   }
-  case NodeKind::Integer64: {
+  case NodeKind::Integer64:
+  {
     SetRVExpression(node, int64_type_);
     break;
   }
-  case NodeKind::UnsignedInteger64: {
+  case NodeKind::UnsignedInteger64:
+  {
     SetRVExpression(node, uint64_type_);
     break;
   }
-  case NodeKind::Fixed32: {
+  case NodeKind::Fixed32:
+  {
     SetRVExpression(node, fixed32_type_);
     break;
   }
-  case NodeKind::Fixed64: {
+  case NodeKind::Fixed64:
+  {
     SetRVExpression(node, fixed64_type_);
     break;
   }
-  case NodeKind::Fixed128: {
+  case NodeKind::Fixed128:
+  {
     SetRVExpression(node, fixed128_type_);
     break;
   }
-  case NodeKind::String: {
+  case NodeKind::String:
+  {
     SetRVExpression(node, string_type_);
     break;
   }
   case NodeKind::True:
-  case NodeKind::False: {
+  case NodeKind::False:
+  {
     SetRVExpression(node, bool_type_);
     break;
   }
-  case NodeKind::Null: {
+  case NodeKind::Null:
+  {
     SetRVExpression(node, null_type_);
     break;
   }
   case NodeKind::Equal:
-  case NodeKind::NotEqual: {
+  case NodeKind::NotEqual:
+  {
     if (!AnnotateEqualityOp(node))
     {
       return false;
@@ -2205,7 +2265,8 @@ bool Analyser::InternalAnnotateExpression(ExpressionNodePtr const &node)
   case NodeKind::LessThan:
   case NodeKind::LessThanOrEqual:
   case NodeKind::GreaterThan:
-  case NodeKind::GreaterThanOrEqual: {
+  case NodeKind::GreaterThanOrEqual:
+  {
     if (!AnnotateRelationalOp(node))
     {
       return false;
@@ -2213,14 +2274,16 @@ bool Analyser::InternalAnnotateExpression(ExpressionNodePtr const &node)
     break;
   }
   case NodeKind::And:
-  case NodeKind::Or: {
+  case NodeKind::Or:
+  {
     if (!AnnotateBinaryLogicalOp(node))
     {
       return false;
     }
     break;
   }
-  case NodeKind::Not: {
+  case NodeKind::Not:
+  {
     if (!AnnotateUnaryLogicalOp(node))
     {
       return false;
@@ -2230,14 +2293,16 @@ bool Analyser::InternalAnnotateExpression(ExpressionNodePtr const &node)
   case NodeKind::PrefixInc:
   case NodeKind::PrefixDec:
   case NodeKind::PostfixInc:
-  case NodeKind::PostfixDec: {
+  case NodeKind::PostfixDec:
+  {
     if (!AnnotatePrefixPostfixOp(node))
     {
       return false;
     }
     break;
   }
-  case NodeKind::Negate: {
+  case NodeKind::Negate:
+  {
     if (!AnnotateNegateOp(node))
     {
       return false;
@@ -2247,49 +2312,56 @@ bool Analyser::InternalAnnotateExpression(ExpressionNodePtr const &node)
   case NodeKind::Add:
   case NodeKind::Subtract:
   case NodeKind::Multiply:
-  case NodeKind::Divide: {
+  case NodeKind::Divide:
+  {
     if (!AnnotateArithmeticOp(node))
     {
       return false;
     }
     break;
   }
-  case NodeKind::Modulo: {
+  case NodeKind::Modulo:
+  {
     if (!AnnotateModuloOp(node))
     {
       return false;
     }
     break;
   }
-  case NodeKind::Index: {
+  case NodeKind::Index:
+  {
     if (!AnnotateIndexOp(node))
     {
       return false;
     }
     break;
   }
-  case NodeKind::Dot: {
+  case NodeKind::Dot:
+  {
     if (!AnnotateDotOp(node))
     {
       return false;
     }
     break;
   }
-  case NodeKind::Invoke: {
+  case NodeKind::Invoke:
+  {
     if (!AnnotateInvokeOp(node))
     {
       return false;
     }
     break;
   }
-  case NodeKind::InitialiserList: {
+  case NodeKind::InitialiserList:
+  {
     if (!AnnotateInitialiserList(node))
     {
       return false;
     }
     break;
   }
-  default: {
+  default:
+  {
     AddError(node->line, "internal error at '" + node->text + "'");
     return false;
   }
@@ -2766,10 +2838,12 @@ bool Analyser::TestBlock(BlockNodePtr const &block_node) const
     {
     case NodeKind::ReturnStatement:
     case NodeKind::BreakStatement:
-    case NodeKind::ContinueStatement: {
+    case NodeKind::ContinueStatement:
+    {
       return false;
     }
-    case NodeKind::IfStatement: {
+    case NodeKind::IfStatement:
+    {
       bool const got_else = child->children.back()->node_kind == NodeKind::Else;
       if (got_else)
       {
@@ -2789,10 +2863,12 @@ bool Analyser::TestBlock(BlockNodePtr const &block_node) const
     }
     case NodeKind::If:
     case NodeKind::ElseIf:
-    case NodeKind::Else: {
+    case NodeKind::Else:
+    {
       return TestBlock(ConvertToBlockNodePtr(child));
     }
-    default: {
+    default:
+    {
       break;
     }
     }  // switch
