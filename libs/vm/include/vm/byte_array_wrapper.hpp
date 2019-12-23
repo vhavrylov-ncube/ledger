@@ -21,12 +21,9 @@
 #include "vm/string.hpp"
 
 namespace fetch {
-
 namespace vm {
-class Module;
-}
 
-namespace vm_modules {
+class Module;
 
 class ByteArrayWrapper : public fetch::vm::Object
 {
@@ -81,5 +78,5 @@ private:
   byte_array::ByteArray byte_array_;
 };
 
-}  // namespace vm_modules
+}  // namespace vm
 }  // namespace fetch

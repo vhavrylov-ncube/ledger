@@ -29,13 +29,13 @@
 #include "vectorise/uint/uint.hpp"
 #include "vm/address.hpp"
 #include "vm/array.hpp"
+#include "vm/bignumber.hpp"
 #include "vm/compiler.hpp"
 #include "vm/function_decorators.hpp"
 #include "vm/vm.hpp"
 #include "vm_modules/core/structured_data.hpp"
 #include "vm_modules/ledger/balance.hpp"
 #include "vm_modules/ledger/transfer_function.hpp"
-#include "vm/bignumber.hpp"
 #include "vm_modules/vm_factory.hpp"
 
 #include <sstream>
@@ -47,7 +47,7 @@ namespace ledger {
 namespace {
 
 using vm::FunctionDecoratorKind;
-using vm_modules::math::UInt256Wrapper;
+using vm::UInt256Wrapper;
 using vm_modules::VMFactory;
 using vm_modules::StructuredData;
 using byte_array::ConstByteArray;

@@ -24,18 +24,13 @@
 #include <cstdint>
 
 namespace fetch {
-
 namespace vm {
+
 class Module;
-}
-
-namespace vm_modules {
-
+class VM;
 class ByteArrayWrapper;
 
-namespace math {
-
-class UInt256Wrapper : public fetch::vm::Object
+class UInt256Wrapper : public Object
 {
 public:
   using UInt256 = vectorise::UInt<256>;
@@ -72,7 +67,7 @@ public:
 
   bool FromJSON(fetch::vm::JSONVariant const &variant) override;
 
-  void Add(fetch::vm::Ptr<Object> &lhso, fetch::vm::Ptr<Object> &rhso) override;
+  void Add(Ptr<Object> &lhso, Ptr<Object> &rhso) override;
   void InplaceAdd(fetch::vm::Ptr<Object> const &lhso, fetch::vm::Ptr<Object> const &rhso) override;
   void Subtract(fetch::vm::Ptr<Object> &lhso, fetch::vm::Ptr<Object> &rhso) override;
   void InplaceSubtract(fetch::vm::Ptr<Object> const &lhso,
@@ -127,6 +122,5 @@ private:
   UInt256 number_;
 };
 
-}  // namespace math
-}  // namespace vm_modules
+}  // namespace vm
 }  // namespace fetch

@@ -26,14 +26,10 @@ namespace vm {
 class Module;
 class Address;
 class IArray;
+class UInt256Wrapper;
 }  // namespace vm
 
 namespace vm_modules {
-
-namespace math {
-class UInt256Wrapper;
-}  // namespace math
-
 namespace ledger {
 
 class Transfer;
@@ -43,7 +39,7 @@ class Transaction;
 
 using AddressPtr = vm::Ptr<vm::Address>;
 
-using DigestPtr      = vm::Ptr<math::UInt256Wrapper>;
+using DigestPtr      = vm::Ptr<vm::UInt256Wrapper>;
 using StringPtr      = vm::Ptr<vm::String>;
 using TransferPtr    = vm::Ptr<Transfer>;
 using TransactionPtr = vm::Ptr<Transaction>;

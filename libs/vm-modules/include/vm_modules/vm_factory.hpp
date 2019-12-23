@@ -17,6 +17,8 @@
 //
 //------------------------------------------------------------------------------
 
+#include "vm/common.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <string>

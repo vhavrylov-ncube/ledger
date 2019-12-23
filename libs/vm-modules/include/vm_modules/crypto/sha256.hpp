@@ -26,14 +26,11 @@ namespace fetch {
 
 namespace vm {
 class Module;
-}
+class ByteArrayWrapper;
+class UInt256Wrapper;
+}  // namespace vm
 
 namespace vm_modules {
-
-class ByteArrayWrapper;
-namespace math {
-class UInt256Wrapper;
-}
 
 class SHA256Wrapper : public fetch::vm::Object
 {
@@ -45,16 +42,16 @@ public:
 
   static void Bind(fetch::vm::Module &module);
 
-  void UpdateUInt256(fetch::vm::Ptr<math::UInt256Wrapper> const &uint);
+  void UpdateUInt256(fetch::vm::Ptr<fetch::vm::UInt256Wrapper> const &uint);
 
   void UpdateString(fetch::vm::Ptr<fetch::vm::String> const &str);
 
-  void UpdateBuffer(fetch::vm::Ptr<ByteArrayWrapper> const &buffer);
+  void UpdateBuffer(fetch::vm::Ptr<fetch::vm::ByteArrayWrapper> const &buffer);
 
   void Reset();
 
-  fetch::vm::Ptr<math::UInt256Wrapper> Final();
-  fetch::vm::Ptr<ByteArrayWrapper>     FinalAsByteArray();
+  fetch::vm::Ptr<fetch::vm::UInt256Wrapper>   Final();
+  fetch::vm::Ptr<fetch::vm::ByteArrayWrapper> FinalAsByteArray();
 
   SHA256Wrapper(fetch::vm::VM *vm, fetch::vm::TypeId type_id);
 

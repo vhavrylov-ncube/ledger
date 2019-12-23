@@ -29,10 +29,7 @@
 #include <utility>
 
 namespace fetch {
-namespace vm_modules {
-namespace math {
-
-using namespace fetch::vm;
+namespace vm {
 
 namespace {
 
@@ -66,25 +63,11 @@ Ptr<UInt256Wrapper> ConstructorFromBytesBigEndian(VM *vm, TypeId type_id,
 
 void UInt256Wrapper::Bind(Module &module)
 {
-  module.CreateClassType<UInt256Wrapper>("UInt256")
+  module.GetClassInterface<UInt256Wrapper>()
       .CreateSerializeDefaultConstructor(
           [](VM *vm, TypeId type_id) { return UInt256Wrapper::Constructor(vm, type_id, 0u); })
       .CreateConstructor(&UInt256Wrapper::Constructor)
       .CreateConstructor(&ConstructorFromBytesBigEndian)
-      .EnableOperator(Operator::Equal)
-      .EnableOperator(Operator::NotEqual)
-      .EnableOperator(Operator::LessThan)
-      .EnableOperator(Operator::LessThanOrEqual)
-      .EnableOperator(Operator::GreaterThan)
-      .EnableOperator(Operator::GreaterThanOrEqual)
-      .EnableOperator(Operator::Add)
-      .EnableOperator(Operator::InplaceAdd)
-      .EnableOperator(Operator::Subtract)
-      .EnableOperator(Operator::InplaceSubtract)
-      .EnableOperator(Operator::Multiply)
-      .EnableOperator(Operator::Divide)
-      .EnableOperator(Operator::InplaceMultiply)
-      .EnableOperator(Operator::InplaceDivide)
       .CreateMemberFunction("copy", &UInt256Wrapper::Copy)
       .CreateMemberFunction("size", &UInt256Wrapper::size);
 
@@ -467,6 +450,5 @@ vm::ChargeAmount UInt256Wrapper::IsGreaterThanOrEqualChargeEstimator(
   return 1;
 }
 
-}  // namespace math
-}  // namespace vm_modules
+}  // namespace vm
 }  // namespace fetch

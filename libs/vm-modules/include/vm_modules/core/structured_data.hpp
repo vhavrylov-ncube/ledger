@@ -39,7 +39,7 @@ public:
   template <typename T, typename Y = void>
   static constexpr bool IsSupportedRefType =
       type_util::IsAnyOfV<meta::Decay<T>, vm::String, vm::Address, vm::Fixed128,
-                          vm_modules::ByteArrayWrapper, vm_modules::math::UInt256Wrapper>;
+                          vm::ByteArrayWrapper, vm::UInt256Wrapper>;
 
   template <typename T, typename Y = void>
   using IfIsSupportedRefType = meta::EnableIf<IsSupportedRefType<T>, Y>;

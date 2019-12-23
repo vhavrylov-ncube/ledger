@@ -16,23 +16,23 @@
 //
 //------------------------------------------------------------------------------
 
+#include "vm_modules/vm_factory.hpp"
 
 #include "logging/logging.hpp"
-#include "vm/module.hpp"
+#include "vm/bignumber.hpp"
 #include "vm/byte_array_wrapper.hpp"
+#include "vm/module.hpp"
 #include "vm_modules/core/panic.hpp"
 #include "vm_modules/core/print.hpp"
 #include "vm_modules/core/structured_data.hpp"
 #include "vm_modules/core/type_convert.hpp"
 #include "vm_modules/crypto/sha256.hpp"
 #include "vm_modules/ledger/context.hpp"
-#include "vm/bignumber.hpp"
 #include "vm_modules/math/exp.hpp"
 #include "vm_modules/math/math.hpp"
 #include "vm_modules/ml/ml.hpp"
 #include "vm_modules/polyfill/bitshifting.hpp"
 #include "vm_modules/polyfill/bitwise_ops.hpp"
-#include "vm_modules/vm_factory.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -97,7 +97,7 @@ std::shared_ptr<Module> VMFactory::GetModule(uint64_t enabled)
     CreateToBool(*module);
 
     ByteArrayWrapper::Bind(*module);
-    math::UInt256Wrapper::Bind(*module);
+    vm::UInt256Wrapper::Bind(*module);  // TODO: move me to VM!
     SHA256Wrapper::Bind(*module);
     StructuredData::Bind(*module);
   }

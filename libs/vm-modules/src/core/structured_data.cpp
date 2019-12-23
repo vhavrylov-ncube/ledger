@@ -44,8 +44,8 @@ namespace {
 
 using fetch::byte_array::ConstByteArray;
 using fetch::byte_array::ByteArray;
-using fetch::vm_modules::ByteArrayWrapper;
-using fetch::vm_modules::math::UInt256Wrapper;
+using fetch::vm::ByteArrayWrapper;
+using fetch::vm::UInt256Wrapper;
 using fetch::vm::Fixed128;
 
 template <typename T>

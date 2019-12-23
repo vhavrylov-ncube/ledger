@@ -28,7 +28,7 @@ namespace {
 using namespace fetch;
 using namespace fetch::vm;
 using fetch::byte_array::ByteArray;
-using fetch::vm_modules::math::UInt256Wrapper;
+using fetch::vm::UInt256Wrapper;
 
 constexpr platform::Endian ENDIANESS_OF_TEST_DATA{platform::Endian::LITTLE};
 

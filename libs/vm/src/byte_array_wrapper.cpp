@@ -30,7 +30,7 @@ using namespace fetch::vm;
 using namespace fetch::byte_array;
 
 namespace fetch {
-namespace vm_modules {
+namespace vm {
 
 void ByteArrayWrapper::Bind(Module &module)
 {
@@ -267,5 +267,5 @@ bool ByteArrayWrapper::DeserializeFrom(serializers::MsgPackSerializer &buffer)
   return true;
 }
 
-}  // namespace vm_modules
+}  // namespace vm
 }  // namespace fetch

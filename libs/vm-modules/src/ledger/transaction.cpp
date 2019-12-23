@@ -17,6 +17,7 @@
 //------------------------------------------------------------------------------
 
 #include "chain/transaction.hpp"
+
 #include "vm/module.hpp"
 #include "vm_modules/ledger/transaction.hpp"
 
@@ -91,7 +92,7 @@ void Transaction::Bind(vm::Module &module)
 Transaction::Transaction(vm::VM *vm, vm::TypeId type_id, fetch::chain::Transaction const &tx)
   : Object{vm, type_id}
   , tx_{std::make_shared<fetch::chain::Transaction>(tx)}
-  , digest_{vm->CreateNewObject<math::UInt256Wrapper>(tx.digest(), platform::Endian::BIG)}
+  , digest_{vm->CreateNewObject<vm::UInt256Wrapper>(tx.digest(), platform::Endian::BIG)}
   , from_{CreateAddress(vm, tx.from(), tx.signatories())}
   , transfers_{CreateTransfers(vm, tx)}
   , contract_address_{CreateAddress(vm, tx.contract_address(), tx.signatories())}

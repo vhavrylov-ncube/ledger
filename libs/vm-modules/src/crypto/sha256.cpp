@@ -41,7 +41,7 @@ void SHA256Wrapper::Bind(Module &module)
       .CreateMemberFunction("reset", &SHA256Wrapper::Reset);
 }
 
-void SHA256Wrapper::UpdateUInt256(Ptr<math::UInt256Wrapper> const &uint)
+void SHA256Wrapper::UpdateUInt256(Ptr<UInt256Wrapper> const &uint)
 {
   hasher_.Update(uint->number().pointer(), uint->number().size());
 }
@@ -61,9 +61,9 @@ void SHA256Wrapper::Reset()
   hasher_.Reset();
 }
 
-Ptr<math::UInt256Wrapper> SHA256Wrapper::Final()
+Ptr<UInt256Wrapper> SHA256Wrapper::Final()
 {
-  return vm_->CreateNewObject<math::UInt256Wrapper>(hasher_.Final(), platform::Endian::BIG);
+  return vm_->CreateNewObject<UInt256Wrapper>(hasher_.Final(), platform::Endian::BIG);
 }
 
 Ptr<ByteArrayWrapper> SHA256Wrapper::FinalAsByteArray()

@@ -278,6 +278,7 @@ private:
   TypePtr        uint32_type_;
   TypePtr        int64_type_;
   TypePtr        uint64_type_;
+  TypePtr        uint256_type_;
   TypePtr        fixed32_type_;
   TypePtr        fixed64_type_;
   TypePtr        fixed128_type_;
