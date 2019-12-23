@@ -17,11 +17,12 @@
 //------------------------------------------------------------------------------
 
 #include "crypto/sha256.hpp"
+
+#include "vm/bignumber.hpp"
+#include "vm/byte_array_wrapper.hpp"
 #include "vm/module.hpp"
 #include "vm/object.hpp"
-#include "vm_modules/core/byte_array_wrapper.hpp"
 #include "vm_modules/crypto/sha256.hpp"
-#include "vm_modules/math/bignumber.hpp"
 
 using namespace fetch::vm;
 

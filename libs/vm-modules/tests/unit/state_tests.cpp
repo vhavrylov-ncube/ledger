@@ -16,15 +16,14 @@
 //
 //------------------------------------------------------------------------------
 
+#include "gmock/gmock.h"
 #include "vm/address.hpp"
 #include "vm/array.hpp"
+#include "vm/byte_array_wrapper.hpp"
 #include "vm/fixed.hpp"
 #include "vm/map.hpp"
 #include "vm/pair.hpp"
-#include "vm_modules/core/byte_array_wrapper.hpp"
 #include "vm_test_toolkit.hpp"
-
-#include "gmock/gmock.h"
 
 #include <sstream>
 

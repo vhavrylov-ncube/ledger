@@ -18,7 +18,7 @@
 
 #include "gmock/gmock.h"
 #include "math/standard_functions/log.hpp"
-#include "vm_modules/math/bignumber.hpp"
+#include "vm/bignumber.hpp"
 #include "vm_modules/math/math.hpp"
 #include "vm_modules/math/type.hpp"
 #include "vm_test_toolkit.hpp"
@@ -521,6 +521,22 @@ TEST_F(UInt256Tests, uint256_sha256_assignment)
             assert(acquired_digest_buffer == expected_digest_BigEndian, "Resulting digest '0x" + acquired_digest_buffer.toHex() + "' does not match expected digest '0x" + expected_digest_BigEndian.toHex() + "'");
         endfunction
       )";
+
+  ASSERT_TRUE(toolkit.Compile(TEXT));
+  EXPECT_TRUE(toolkit.Run());
+}
+
+TEST_F(UInt256Tests, uint256_array)
+{
+  static constexpr char const *TEXT = R"(
+      function main()
+          var test : UInt256 = UInt256(9000000000000000000u64);
+          var test_str : String = toString(test);
+          var expected_str_in_big_endian_enc : String =
+          "0000000000000000000000000000000000000000000000007ce66c50e2840000";
+          assert(test_str == expected_str_in_big_endian_enc, "toString(...) failed");
+      endfunction
+    )";
 
   ASSERT_TRUE(toolkit.Compile(TEXT));
   EXPECT_TRUE(toolkit.Run());

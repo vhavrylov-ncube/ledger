@@ -35,7 +35,7 @@
 #include "vm_modules/core/structured_data.hpp"
 #include "vm_modules/ledger/balance.hpp"
 #include "vm_modules/ledger/transfer_function.hpp"
-#include "vm_modules/math/bignumber.hpp"
+#include "vm/bignumber.hpp"
 #include "vm_modules/vm_factory.hpp"
 
 #include <sstream>

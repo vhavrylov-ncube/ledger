@@ -19,10 +19,10 @@
 
 #include "variant/variant.hpp"
 #include "vm/address.hpp"
+#include "vm/bignumber.hpp"
+#include "vm/byte_array_wrapper.hpp"
 #include "vm/fixed.hpp"
 #include "vm/object.hpp"
-#include "vm_modules/core/byte_array_wrapper.hpp"
-#include "vm_modules/math/bignumber.hpp"
 
 namespace fetch {
 

@@ -18,9 +18,9 @@
 //------------------------------------------------------------------------------
 
 #include "vm/array.hpp"
+#include "vm/bignumber.hpp"
 #include "vm_modules/ledger/forward_decl.hpp"
 #include "vm_modules/ledger/transfer.hpp"
-#include "vm_modules/math/bignumber.hpp"
 
 namespace fetch {
 

@@ -16,12 +16,13 @@
 //
 //------------------------------------------------------------------------------
 
+#include "vm/byte_array_wrapper.hpp"
+
 #include "core/byte_array/byte_array.hpp"
 #include "core/byte_array/decoders.hpp"
 #include "core/byte_array/encoders.hpp"
 #include "vm/module.hpp"
 #include "vm/vm.hpp"
-#include "vm_modules/core/byte_array_wrapper.hpp"
 
 #include <cstdint>
 

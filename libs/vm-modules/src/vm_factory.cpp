@@ -16,16 +16,17 @@
 //
 //------------------------------------------------------------------------------
 
+
 #include "logging/logging.hpp"
 #include "vm/module.hpp"
-#include "vm_modules/core/byte_array_wrapper.hpp"
+#include "vm/byte_array_wrapper.hpp"
 #include "vm_modules/core/panic.hpp"
 #include "vm_modules/core/print.hpp"
 #include "vm_modules/core/structured_data.hpp"
 #include "vm_modules/core/type_convert.hpp"
 #include "vm_modules/crypto/sha256.hpp"
 #include "vm_modules/ledger/context.hpp"
-#include "vm_modules/math/bignumber.hpp"
+#include "vm/bignumber.hpp"
 #include "vm_modules/math/exp.hpp"
 #include "vm_modules/math/math.hpp"
 #include "vm_modules/ml/ml.hpp"

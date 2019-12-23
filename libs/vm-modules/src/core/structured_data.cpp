@@ -16,6 +16,8 @@
 //
 //------------------------------------------------------------------------------
 
+#include "vm_modules/core/structured_data.hpp"
+
 #include "core/byte_array/const_byte_array.hpp"
 #include "core/byte_array/decoders.hpp"
 #include "core/byte_array/encoders.hpp"
@@ -25,7 +27,6 @@
 #include "vm/array.hpp"
 #include "vm/fixed.hpp"
 #include "vm/module.hpp"
-#include "vm_modules/core/structured_data.hpp"
 #include "vm_modules/math/tensor/tensor.hpp"
 
 #include <sstream>
@@ -179,8 +180,7 @@ void StructuredData::Bind(Module &module)
       .CreateMemberFunction("getArrayFixed64", &StructuredData::GetArray<fixed_point::fp64_t>)
       .CreateMemberFunction("getArrayFixed128", &StructuredData::GetObjectArray<Fixed128>)
       .CreateMemberFunction("getArrayString", &StructuredData::GetObjectArray<String>)
-      // TODO(ML-269)
-      // .CreateMemberFunction("getArrayUInt256", &StructuredData::GetObjectArray<UInt256Wrapper>)
+      .CreateMemberFunction("getArrayUInt256", &StructuredData::GetObjectArray<UInt256Wrapper>)
       // Setters
       .CreateMemberFunction("set", &StructuredData::SetArray<int32_t>)
       .CreateMemberFunction("set", &StructuredData::SetArray<int64_t>)
@@ -190,8 +190,7 @@ void StructuredData::Bind(Module &module)
       .CreateMemberFunction("set", &StructuredData::SetArray<fixed_point::fp64_t>)
       .CreateMemberFunction("set", &StructuredData::SetObjectArray<Fixed128>)
       .CreateMemberFunction("set", &StructuredData::SetObjectArray<String>)
-      // TODO(ML-269)
-      // .CreateMemberFunction("set", &StructuredData::SetObjectArray<UInt256Wrapper>)
+      .CreateMemberFunction("set", &StructuredData::SetObjectArray<UInt256Wrapper>)
       .CreateMemberFunction("set", &StructuredData::SetObject<String>)
       .CreateMemberFunction("set", &StructuredData::SetObject<Address>)
       .CreateMemberFunction("set", &StructuredData::SetObject<ByteArrayWrapper>)
