@@ -43,9 +43,13 @@ using fetch::ml::OptimiserType;
 using fetch::ml::details::ActivationType;
 
 std::map<std::string, SupportedLayerType> const VMModel::layer_types_{
-    {"dense", SupportedLayerType::DENSE},     {"conv1d", SupportedLayerType::CONV1D},
-    {"conv2d", SupportedLayerType::CONV2D},   {"flatten", SupportedLayerType::FLATTEN},
-    {"dropout", SupportedLayerType::DROPOUT}, {"activation", SupportedLayerType::ACTIVATION},
+    {"dense", SupportedLayerType::DENSE},
+    {"conv1d", SupportedLayerType::CONV1D},
+    {"conv2d", SupportedLayerType::CONV2D},
+    {"flatten", SupportedLayerType::FLATTEN},
+    {"dropout", SupportedLayerType::DROPOUT},
+    {"activation", SupportedLayerType::ACTIVATION},
+    {"max_pooling", SupportedLayerType::MAX_POOLING},
 };
 
 std::map<std::string, ActivationType> const VMModel::activations_{

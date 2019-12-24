@@ -486,6 +486,11 @@ TEST_F(VMModelTests, model_add_flatten)
   TestValidLayerAdding(R"(model.add("flatten");)", IGNORE_CHARGE_ESTIMATION);
 }
 
+TEST_F(VMModelTests, model_add_max_pool)
+{
+  TestValidLayerAdding(R"(model.add("max_pooling", 3u64, 1u64);)", IGNORE_CHARGE_ESTIMATION);
+}
+
 TEST_F(VMModelTests, model_add_activation)
 {
   TestValidLayerAdding(R"(model.add("activation", "relu");)", IGNORE_CHARGE_ESTIMATION);
