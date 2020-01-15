@@ -79,7 +79,14 @@ private:
 template <typename TensorType>
 void SubGraph<TensorType>::Forward(VecTensorType const &inputs, TensorType &output)
 {
-  assert(inputs.size() == this->input_node_names_.size());
+  if (inputs.size() != this->input_node_names_.size())
+  {
+    std::cout << "NODE INPUT NAMES :: " << std::endl;
+    for (auto const &name : this->input_node_names_)
+    {
+      std::cout << "NODE INPUT NAME " << name << std::endl;
+    }
+  }
   for (uint64_t i(0); i < inputs.size(); ++i)
   {
     this->SetInput(input_node_names_[i], *(inputs.at(i)));

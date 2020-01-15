@@ -677,6 +677,125 @@ TYPED_TEST(GraphTest, diamond_graph_getStateDict)
   EXPECT_EQ(sd.dict_["Diamond_Weight2"].weights_->shape(), data2.shape());
 }
 
+TYPED_TEST(GraphTest, compute_shapes_single_placeholder)
+{
+  using TensorType = TypeParam;
+
+  TensorType data = TensorType::FromString(R"(01,02,03,04; 11,12,13,14; 21,22,23,24; 31,32,33,34)");
+  math::SizeVector batch_shape = data.shape();
+  batch_shape.back()           = 1;  // Because default batch size is always 1.
+
+  fetch::ml::Graph<TensorType> g;
+
+  std::string input = g.template AddNode<fetch::ml::ops::PlaceHolder<TensorType>>("Input", {});
+
+  g.SetInput(input, data);
+  g.Compile();
+
+  math::SizeVector const out_shape = g.GetNode(input)->BatchOutputShape();
+
+  ASSERT_EQ(batch_shape, out_shape);
+}
+
+TYPED_TEST(GraphTest, compute_shapes_dense_layers)
+{
+  using TensorType = TypeParam;
+  using Dense      = fetch::ml::layers::FullyConnected<TensorType>;
+
+  static constexpr math::SizeType FIRST_LAYER_OUTPUTS  = 3;
+  static constexpr math::SizeType SECOND_LAYER_OUTPUTS = 13;
+  static constexpr math::SizeType THIRD_LAYER_OUTPUTS  = 9;
+
+  TensorType data = TensorType::FromString(R"(01,02,03,04; 11,12,13,14; 21,22,23,24; 31,32,33,34)");
+  math::SizeVector batch_shape = data.shape();
+  batch_shape.back()           = 1;  // Because default batch size is always 1.
+
+  fetch::ml::Graph<TensorType> g;
+
+  std::string input   = g.template AddNode<fetch::ml::ops::PlaceHolder<TensorType>>("Input", {});
+  std::string layer_1 = g.template AddNode<Dense>("FC1", {"Input"}, Dense::AUTODETECT_INPUT_SHAPE,
+                                                  FIRST_LAYER_OUTPUTS);
+  std::string layer_2 = g.template AddNode<Dense>("FC2", {"FC1"}, Dense::AUTODETECT_INPUT_SHAPE,
+                                                  SECOND_LAYER_OUTPUTS);
+  std::string output =
+      g.template AddNode<Dense>("FC3", {"FC2"}, Dense::AUTODETECT_INPUT_SHAPE, THIRD_LAYER_OUTPUTS);
+
+  g.SetInput(input, data);
+  g.Compile();
+
+  math::SizeVector const out_shape1 = g.GetNode(layer_1)->BatchOutputShape();
+  EXPECT_EQ(out_shape1.size(), batch_shape.size());
+  EXPECT_EQ(out_shape1.at(0), FIRST_LAYER_OUTPUTS);
+
+  math::SizeVector const out_shape2 = g.GetNode(layer_2)->BatchOutputShape();
+  EXPECT_EQ(out_shape2.size(), batch_shape.size());
+  EXPECT_EQ(out_shape2.at(0), SECOND_LAYER_OUTPUTS);
+
+  math::SizeVector const out_shape3 = g.GetNode(output)->BatchOutputShape();
+  EXPECT_EQ(out_shape3.size(), batch_shape.size());
+  EXPECT_EQ(out_shape3.at(0), THIRD_LAYER_OUTPUTS);
+
+  TensorType const       result = g.Evaluate(output);
+  math::SizeVector const expected_out_shape{THIRD_LAYER_OUTPUTS, data.shape().back()};
+  EXPECT_EQ(result.shape(), expected_out_shape);
+}
+
+TYPED_TEST(GraphTest, compute_shapes_two_outputs)
+{
+  using TensorType = TypeParam;
+  using Dense      = fetch::ml::layers::FullyConnected<TensorType>;
+
+  static constexpr math::SizeType CENTER_OUTPUTS = 21;
+  static constexpr math::SizeType LEFT_OUTPUTS   = 13;
+  static constexpr math::SizeType RIGHT_OUTPUTS  = 9;
+
+  TensorType data = TensorType::FromString(R"(01,02,03,04; 11,12,13,14; 21,22,23,24; 31,32,33,34)");
+
+  fetch::ml::Graph<TensorType> g;
+
+  //     input {4, 1}
+  //       |
+  //  c e n t e r {21, 1}
+  //   /       \
+  //  lo       ro
+  //{13, 1}  {9, 1}
+
+  std::string left_input =
+      g.template AddNode<fetch::ml::ops::PlaceHolder<TensorType>>("LeftInput", {});
+  std::string right_input =
+      g.template AddNode<fetch::ml::ops::PlaceHolder<TensorType>>("RightInput", {});
+
+  std::string center = g.template AddNode<Dense>("Center", {"LeftInput", "RightInput"},
+                                                 Dense::AUTODETECT_INPUT_SHAPE, CENTER_OUTPUTS);
+
+  std::string left_output  = g.template AddNode<Dense>("LeftOutput", {"Center"},
+                                                      Dense::AUTODETECT_INPUT_SHAPE, LEFT_OUTPUTS);
+  std::string right_output = g.template AddNode<Dense>(
+      "RightOutput", {"Center"}, Dense::AUTODETECT_INPUT_SHAPE, RIGHT_OUTPUTS);
+
+  g.SetInput(left_input, data);
+  g.SetInput(right_input, data);
+  g.Compile();
+
+  math::SizeVector const center_out_batch_shape = g.GetNode(center)->BatchOutputShape();
+  EXPECT_EQ(center_out_batch_shape.at(0), CENTER_OUTPUTS);
+
+  math::SizeVector const left_out_batch_shape = g.GetNode(left_output)->BatchOutputShape();
+  EXPECT_EQ(left_out_batch_shape.at(0), LEFT_OUTPUTS);
+
+  math::SizeVector const right_out_batch_shape = g.GetNode(right_output)->BatchOutputShape();
+  EXPECT_EQ(right_out_batch_shape.at(0), RIGHT_OUTPUTS);
+
+  TensorType const left_result  = g.Evaluate(left_output);
+  TensorType const right_result = g.Evaluate(right_output);
+
+  math::SizeVector const expected_left_out_shape{LEFT_OUTPUTS, data.shape().back()};
+  EXPECT_EQ(left_result.shape(), expected_left_out_shape);
+
+  math::SizeVector const expected_right_out_shape{RIGHT_OUTPUTS, data.shape().back()};
+  EXPECT_EQ(right_result.shape(), expected_right_out_shape);
+}
+
 }  // namespace test
 }  // namespace ml
 }  // namespace fetch
