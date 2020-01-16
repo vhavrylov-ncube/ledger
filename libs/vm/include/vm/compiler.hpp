@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -115,7 +115,7 @@ private:
   }
 
   void GetDetails(TypeInfoArray &type_info_array, TypeInfoMap &type_info_map,
-                  RegisteredTypes &registered_types, FunctionInfoArray &function_info_array)
+                  RegisteredTypes &registered_types, FunctionInfoArray &function_info_array) const
   {
     analyser_.GetDetails(type_info_array, type_info_map, registered_types, function_info_array);
   }

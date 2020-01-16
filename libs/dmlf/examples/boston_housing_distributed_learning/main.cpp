@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -20,10 +20,10 @@
 #include "dmlf/collective_learning/utilities/boston_housing_client_utilities.hpp"
 
 #include "dmlf/collective_learning/utilities/utilities.hpp"
-#include "dmlf/networkers/local_learner_networker.hpp"
+#include "dmlf/deprecated/local_learner_networker.hpp"
 #include "dmlf/simple_cycling_algorithm.hpp"
 #include "math/matrix_operations.hpp"
-#include "math/tensor.hpp"
+#include "math/tensor/tensor.hpp"
 #include "math/utilities/ReadCSV.hpp"
 #include "ml/exceptions/exceptions.hpp"
 
@@ -57,15 +57,16 @@ int main(int argc, char **argv)
   fetch::dmlf::collective_learning::ClientParams<DataType> client_params =
       fetch::dmlf::collective_learning::utilities::ClientParamsFromJson<TensorType>(
           std::string(argv[1]), doc);
-  auto data_file      = doc["data"].As<std::string>();
-  auto labels_file    = doc["labels"].As<std::string>();
-  auto results_dir    = doc["results"].As<std::string>();
-  auto n_clients      = doc["n_clients"].As<SizeType>();
-  auto n_peers        = doc["n_peers"].As<SizeType>();
-  auto n_rounds       = doc["n_rounds"].As<SizeType>();
-  auto synchronise    = doc["synchronise"].As<bool>();
-  auto seed           = doc["random_seed"].As<SizeType>();
-  auto test_set_ratio = doc["test_set_ratio"].As<float>();
+  auto data_file   = doc["data"].As<std::string>();
+  auto labels_file = doc["labels"].As<std::string>();
+  auto results_dir = doc["results"].As<std::string>();
+  auto n_clients   = doc["n_clients"].As<SizeType>();
+  auto n_peers     = doc["n_peers"].As<SizeType>();
+  auto n_rounds    = doc["n_rounds"].As<SizeType>();
+  auto synchronise = doc["synchronise"].As<bool>();
+  auto seed        = doc["random_seed"].As<SizeType>();
+  auto test_set_ratio =
+      fetch::math::AsType<fetch::fixed_point::fp32_t>(doc["test_set_ratio"].As<float>());
 
   std::shared_ptr<std::mutex> console_mutex_ptr = std::make_shared<std::mutex>();
 
@@ -81,11 +82,11 @@ int main(int argc, char **argv)
   std::vector<TensorType> label_tensors = utilities::Split(label_tensor, n_clients);
 
   // Create networkers
-  std::vector<std::shared_ptr<fetch::dmlf::LocalLearnerNetworker>> networkers(n_clients);
+  std::vector<std::shared_ptr<fetch::dmlf::deprecated_LocalLearnerNetworker>> networkers(n_clients);
   for (SizeType i(0); i < n_clients; ++i)
   {
-    networkers[i] = std::make_shared<fetch::dmlf::LocalLearnerNetworker>();
-    networkers[i]->Initialize<fetch::dmlf::Update<TensorType>>();
+    networkers[i] = std::make_shared<fetch::dmlf::deprecated_LocalLearnerNetworker>();
+    networkers[i]->Initialize<fetch::dmlf::deprecated_Update<TensorType>>();
   }
 
   // Add peers to networkers and initialise shuffle algorithm

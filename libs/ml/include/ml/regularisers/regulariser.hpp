@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 //
 //------------------------------------------------------------------------------
 
-#include "core/assert.hpp"
-#include "math/tensor.hpp"
 #include "ml/regularisers/reg_types.hpp"
 
 namespace fetch {
@@ -28,7 +26,7 @@ namespace regularisers {
 /*
  * Abstract Regulariser interface
  */
-template <class T>
+template <typename T>
 class Regulariser
 {
 public:
@@ -37,9 +35,7 @@ public:
 
   Regulariser() = default;
 
-  explicit Regulariser(RegularisationType reg_type)
-    : reg_type(reg_type)
-  {}
+  explicit Regulariser(RegularisationType reg_type);
 
   virtual ~Regulariser() = default;
 

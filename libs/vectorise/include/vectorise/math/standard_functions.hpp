@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ VectorRegister<T, S> exp(VectorRegister<T, S> x, T const &precision = 0.00001)
   VectorRegister<T, S> p(precision);
   std::size_t          n = 0;
 
-  while (any_less_than(p, abs(xserie)))
+  while (any_less_than(p, Abs(xserie)))
   {
     ret = ret + xserie;
     ++n;

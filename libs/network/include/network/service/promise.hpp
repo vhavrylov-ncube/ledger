@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -113,13 +113,10 @@ public:
 
   /// @name Result Access
   /// @{
-  bool Wait(bool throw_exception = true) const;
+  bool Wait(bool throw_exception = true, uint64_t extend_wait_by = 0) const;
 
   template <typename T>
-  T As() const;
-
-  template <typename T>
-  bool As(T &ret) const;
+  bool GetResult(T &ret, uint64_t extend_wait_by = 0) const;
   /// @}
 
   // Operators
@@ -160,8 +157,8 @@ private:
   mutable Callback callback_failure_;
   mutable Callback callback_completion_;
 
-  mutable Mutex     notify_lock_;
-  mutable Condition notify_;
+  mutable std::mutex notify_lock_;
+  mutable Condition  notify_;
 };
 
 class PromiseBuilder
@@ -215,29 +212,27 @@ private:
 };
 
 template <typename T>
-T details::PromiseImplementation::As() const
+bool details::PromiseImplementation::GetResult(T &ret, uint64_t extend_wait_by) const
 {
-  T result{};
-  if (!As<T>(result))
+  bool success{false};
+
+  try
   {
-    throw PromiseError{*this};
+    if (Wait(true, extend_wait_by))
+    {
+      SerializerType ser(value_);
+      ser >> ret;
+
+      success = true;
+    }
+  }
+  catch (std::exception const &ex)
+  {
+    PromiseError const error{*this};
+    FETCH_LOG_WARN("Promise", error.what(), " : ", ex.what());
   }
 
-  return result;
-}
-
-template <typename T>
-bool details::PromiseImplementation::As(T &ret) const
-{
-  if (!Wait())
-  {
-    return false;
-  }
-
-  SerializerType ser(value_);
-  ser >> ret;
-
-  return true;
+  return success;
 }
 
 using PromiseCounter = details::PromiseImplementation::Counter;

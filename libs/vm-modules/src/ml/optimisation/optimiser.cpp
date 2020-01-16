@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -16,19 +16,19 @@
 //
 //------------------------------------------------------------------------------
 
+#include "ml/optimisation/optimiser.hpp"
+
 #include "ml/optimisation/adagrad_optimiser.hpp"
 #include "ml/optimisation/adam_optimiser.hpp"
 #include "ml/optimisation/momentum_optimiser.hpp"
-#include "ml/optimisation/optimiser.hpp"
 #include "ml/optimisation/rmsprop_optimiser.hpp"
 #include "ml/optimisation/sgd_optimiser.hpp"
 #include "ml/serializers/ml_types.hpp"
 #include "vm/module.hpp"
-#include "vm_modules/math/tensor.hpp"
+#include "vm_modules/math/tensor/tensor.hpp"
 #include "vm_modules/ml/dataloaders/dataloader.hpp"
 #include "vm_modules/ml/graph.hpp"
 #include "vm_modules/ml/optimisation/optimiser.hpp"
-#include "vm_modules/ml/training_pair.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -53,7 +53,6 @@ VMOptimiser::VMOptimiser(VM *vm, TypeId type_id, std::string const &mode, GraphT
                          std::string const &label_node_name, std::string const &output_node_name)
   : Object(vm, type_id)
 {
-  loader_ = (loader->GetDataLoader());
   if (mode == "adagrad")
   {
     mode_ = OptimiserMode::ADAGRAD;
@@ -91,22 +90,27 @@ VMOptimiser::VMOptimiser(VM *vm, TypeId type_id, std::string const &mode, GraphT
   }
   else
   {
-    throw std::runtime_error("unrecognised optimiser mode");
+    RuntimeError("unrecognised optimiser mode: " + mode);
+    return;
   }
+  loader_ = (loader->GetDataLoader());
 }
 
-void VMOptimiser::Bind(Module &module)
+void VMOptimiser::Bind(Module &module, bool const enable_experimental)
 {
-  module.CreateClassType<VMOptimiser>("Optimiser")
-      .CreateConstructor(&VMOptimiser::Constructor)
-      .CreateSerializeDefaultConstructor([](VM *vm, TypeId type_id) -> Ptr<VMOptimiser> {
-        return Ptr<VMOptimiser>{new VMOptimiser(vm, type_id)};
-      })
-      .CreateMemberFunction("run", &VMOptimiser::RunData)
-      .CreateMemberFunction("run", &VMOptimiser::RunLoader)
-      .CreateMemberFunction("run", &VMOptimiser::RunLoaderNoSubset)
-      .CreateMemberFunction("setGraph", &VMOptimiser::SetGraph)
-      .CreateMemberFunction("setDataloader", &VMOptimiser::SetDataloader);
+  if (enable_experimental)
+  {
+    module.CreateClassType<VMOptimiser>("Optimiser")
+        .CreateConstructor(&VMOptimiser::Constructor, vm::MAXIMUM_CHARGE)
+        .CreateSerializeDefaultConstructor([](VM *vm, TypeId type_id) -> Ptr<VMOptimiser> {
+          return Ptr<VMOptimiser>{new VMOptimiser(vm, type_id)};
+        })
+        .CreateMemberFunction("run", &VMOptimiser::RunData, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("run", &VMOptimiser::RunLoader, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("run", &VMOptimiser::RunLoaderNoSubset, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("setGraph", &VMOptimiser::SetGraph, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("setDataloader", &VMOptimiser::SetDataloader, vm::MAXIMUM_CHARGE);
+  }
 }
 
 Ptr<VMOptimiser> VMOptimiser::Constructor(

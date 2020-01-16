@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -59,6 +59,11 @@ public:
     {
       data_ = std::shared_ptr<T>(
           static_cast<T *>(_mm_malloc(this->padded_size() * sizeof(type), 64)), _mm_free);
+
+      if (!data_)
+      {
+        throw std::runtime_error("Can't allocate array of size " + std::to_string(n));
+      }
 
       this->pointer_ = data_.get();
     }

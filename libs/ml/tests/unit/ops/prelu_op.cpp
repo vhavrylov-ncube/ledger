@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -60,8 +60,8 @@ TYPED_TEST(PReluOpTest, forward_test)
   op.Forward({std::make_shared<TypeParam>(data), std::make_shared<TypeParam>(alpha)}, prediction);
 
   // test correct values
-  ASSERT_TRUE(prediction.AllClose(gt, math::function_tolerance<DataType>(),
-                                  math::function_tolerance<DataType>()));
+  ASSERT_TRUE(prediction.AllClose(gt, fetch::math::function_tolerance<DataType>(),
+                                  fetch::math::function_tolerance<DataType>()));
 }
 
 TYPED_TEST(PReluOpTest, backward_test)
@@ -69,23 +69,19 @@ TYPED_TEST(PReluOpTest, backward_test)
   using DataType   = typename TypeParam::Type;
   using TensorType = TypeParam;
 
-  TensorType alpha = TensorType::FromString(R"(
-    0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)")
-                         .Transpose();
+  TensorType alpha =
+      TensorType::FromString(R"(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)").Transpose();
 
-  TensorType data = TensorType::FromString(R"(
-  	 1, -2, 3,-4, 5,-6, 7,-8;
-    -1,  2,-3, 4,-5, 6,-7, 8)")
+  TensorType data = TensorType::FromString(R"(1,-2, 3,-4, 5,-6, 7,-8;
+                                             -1, 2,-3, 4,-5, 6,-7, 8)")
                         .Transpose();
 
-  TensorType gt = TensorType::FromString(R"(
-    0, 0, 0, 0, 1, 0.6, 0, 0;
-    0, 0, 0, 0, 0.5, 1, 0, 0)")
+  TensorType gt = TensorType::FromString(R"(0, 0, 0, 0, 1, 0.6, 0, 0;
+                                            0, 0, 0, 0, 0.5, 1, 0, 0)")
                       .Transpose();
 
-  TensorType error = TensorType::FromString(R"(
-  	0, 0, 0, 0, 1, 1, 0, 0;
-    0, 0, 0, 0, 1, 1, 0, 0)")
+  TensorType error = TensorType::FromString(R"(0, 0, 0, 0, 1, 1, 0, 0;
+                                               0, 0, 0, 0, 1, 1, 0, 0)")
                          .Transpose();
 
   fetch::ml::ops::PReluOp<TensorType> op;
@@ -93,7 +89,8 @@ TYPED_TEST(PReluOpTest, backward_test)
       op.Backward({std::make_shared<TypeParam>(data), std::make_shared<TypeParam>(alpha)}, error);
 
   // test correct values
-  ASSERT_TRUE(prediction[0].AllClose(gt, DataType(1e-5), DataType(1e-5)));
+  ASSERT_TRUE(prediction[0].AllClose(gt, fetch::math::function_tolerance<DataType>(),
+                                     fetch::math::function_tolerance<DataType>()));
 }
 
 TYPED_TEST(PReluOpTest, saveparams_test)
@@ -106,11 +103,6 @@ TYPED_TEST(PReluOpTest, saveparams_test)
 
   TensorType data =
       TensorType::FromString("1, -2, 3,-4, 5,-6, 7,-8; -1,  2,-3, 4,-5, 6,-7, 8").Transpose();
-
-  TensorType gt =
-      TensorType::FromString(
-          "1,-0.4,   3,-1.6,   5,-3.6,   7,-6.4; -0.1,   2,-0.9,   4,-2.5,   6,-4.9,   8")
-          .Transpose();
 
   TensorType alpha = TensorType::FromString("0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8").Transpose();
 
@@ -146,8 +138,7 @@ TYPED_TEST(PReluOpTest, saveparams_test)
   new_op.Forward(vec_data, new_prediction);
 
   // test correct values
-  EXPECT_TRUE(
-      new_prediction.AllClose(prediction, static_cast<DataType>(0), static_cast<DataType>(0)));
+  EXPECT_TRUE(new_prediction.AllClose(prediction, DataType{0}, DataType{0}));
 }
 
 TYPED_TEST(PReluOpTest, saveparams_backward_test)
@@ -156,18 +147,15 @@ TYPED_TEST(PReluOpTest, saveparams_backward_test)
   using OpType     = fetch::ml::ops::PReluOp<TensorType>;
   using SPType     = typename OpType::SPType;
 
-  TensorType alpha = TensorType::FromString(R"(
-    0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)")
-                         .Transpose();
+  TensorType alpha =
+      TensorType::FromString(R"(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)").Transpose();
 
-  TensorType data = TensorType::FromString(R"(
-  	 1, -2, 3,-4, 5,-6, 7,-8;
-    -1,  2,-3, 4,-5, 6,-7, 8)")
+  TensorType data = TensorType::FromString(R"(1, -2, 3,-4, 5,-6, 7,-8;
+                                             -1,  2,-3, 4,-5, 6,-7, 8)")
                         .Transpose();
 
-  TensorType error = TensorType::FromString(R"(
-  	0, 0, 0, 0, 1, 1, 0, 0;
-    0, 0, 0, 0, 1, 1, 0, 0)")
+  TensorType error = TensorType::FromString(R"(0, 0, 0, 0, 1, 1, 0, 0;
+                                               0, 0, 0, 0, 1, 1, 0, 0)")
                          .Transpose();
 
   fetch::ml::ops::PReluOp<TensorType> op;

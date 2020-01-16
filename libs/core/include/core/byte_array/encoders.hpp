@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -22,7 +22,12 @@
 namespace fetch {
 namespace byte_array {
 
-ConstByteArray ToBase64(ConstByteArray const &str);
+ConstByteArray        ToBase64(uint8_t const *data, std::size_t data_size);
+inline ConstByteArray ToBase64(ConstByteArray const &data)
+{
+  return data.empty() ? ConstByteArray{} : ToBase64(data.pointer(), data.size());
+}
+
 ConstByteArray ToHex(ConstByteArray const &str);
 
 ConstByteArray ToBin(ConstByteArray const &str);

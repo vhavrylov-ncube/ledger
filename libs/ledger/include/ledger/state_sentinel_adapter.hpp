@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -34,8 +34,10 @@ namespace ledger {
 class StateSentinelAdapter : public StateAdapter
 {
 public:
+  using ConstByteArray = byte_array::ConstByteArray;
+
   // Construction / Destruction
-  StateSentinelAdapter(StorageInterface &storage, Identifier scope, BitVector const &shards);
+  StateSentinelAdapter(StorageInterface &storage, ConstByteArray scope, BitVector const &shards);
   ~StateSentinelAdapter() override;
 
   /// @name IO Observer Interface

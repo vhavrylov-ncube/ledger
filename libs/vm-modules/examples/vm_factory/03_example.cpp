@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -42,7 +42,8 @@ int main(int argc, char **argv)
   std::ifstream file(argv[1], std::ios::binary);
   if (!file)
   {
-    throw std::runtime_error("Failed to find input file.");
+    std::cout << "Cannot open file " << std::string(argv[1]) << std::endl;
+    return -1;
   }
   std::ostringstream ss;
   ss << file.rdbuf();

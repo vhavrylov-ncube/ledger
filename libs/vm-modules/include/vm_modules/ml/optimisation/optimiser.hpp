@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ public:
               vm::Ptr<VMDataLoader> const &loader, std::vector<std::string> const &input_node_names,
               std::string const &label_node_name, std::string const &output_node_name);
 
-  static void Bind(vm::Module &module);
+  static void Bind(vm::Module &module, bool enable_experimental);
 
   static fetch::vm::Ptr<VMOptimiser> Constructor(
       fetch::vm::VM *vm, fetch::vm::TypeId type_id, fetch::vm::Ptr<fetch::vm::String> const &mode,
@@ -127,7 +127,7 @@ public:
 
 private:
   std::shared_ptr<fetch::ml::optimisers::Optimiser<fetch::math::Tensor<DataType>>> optimiser_;
-  std::shared_ptr<fetch::ml::dataloaders::DataLoader<TensorType, TensorType>>      loader_;
+  std::shared_ptr<fetch::ml::dataloaders::DataLoader<TensorType>>                  loader_;
   OptimiserMode                                                                    mode_;
 };
 
@@ -152,11 +152,9 @@ struct MapSerializer<fetch::vm_modules::ml::VMOptimiser, D>
   using SgdOptimiserType      = fetch::vm_modules::ml::VMOptimiser::SgdOptimiserType;
 
   using DataLoaderType =
-      fetch::ml::dataloaders::DataLoader<vm_modules::ml::VMOptimiser::TensorType,
-                                         vm_modules::ml::VMOptimiser::TensorType>;
+      fetch::ml::dataloaders::DataLoader<vm_modules::ml::VMOptimiser::TensorType>;
   using TensorDataLoaderType =
-      fetch::ml::dataloaders::TensorDataLoader<vm_modules::ml::VMOptimiser::TensorType,
-                                               vm_modules::ml::VMOptimiser::TensorType>;
+      fetch::ml::dataloaders::TensorDataLoader<vm_modules::ml::VMOptimiser::TensorType>;
   using DriverType = D;
 
   static uint8_t const MODE       = 1;
@@ -213,7 +211,7 @@ struct MapSerializer<fetch::vm_modules::ml::VMOptimiser, D>
     }
     default:
     {
-      throw std::runtime_error("unknown dataloader type");
+      throw std::runtime_error("unknown optimiser type, serialisation is not possible.");
     }
     }
   }
@@ -264,7 +262,7 @@ struct MapSerializer<fetch::vm_modules::ml::VMOptimiser, D>
     }
     default:
     {
-      throw std::runtime_error("optimiser mode not recognised");
+      throw std::runtime_error("optimiser mode not recognised, deserialisation is not possible.");
     }
     }
   }

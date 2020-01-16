@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -33,9 +33,13 @@ class Transaction;
 }  // namespace chain
 namespace ledger {
 
+class Deed;
+
 class TokenContract : public Contract
 {
 public:
+  using DeedPtr = std::shared_ptr<Deed>;
+
   static constexpr char const *LOGGING_NAME = "TokenContract";
   static constexpr char const *NAME         = "fetch.token";
 
@@ -44,14 +48,15 @@ public:
   ~TokenContract() override = default;
 
   // library functions
+  DeedPtr  GetDeed(chain::Address const &address);
+  void     SetDeed(chain::Address const &address, DeedPtr const &deed);
   uint64_t GetBalance(chain::Address const &address);
   bool     AddTokens(chain::Address const &address, uint64_t amount);
   bool     SubtractTokens(chain::Address const &address, uint64_t amount);
   bool     TransferTokens(chain::Transaction const &tx, chain::Address const &to, uint64_t amount);
 
   // transaction handlers
-  Result CreateWealth(chain::Transaction const &tx);
-  Result Deed(chain::Transaction const &tx);
+  Result UpdateDeed(chain::Transaction const &tx);
   Result Transfer(chain::Transaction const &tx);
   Result AddStake(chain::Transaction const &tx);
   Result DeStake(chain::Transaction const &tx);
@@ -59,6 +64,7 @@ public:
 
   // queries
   Status Balance(Query const &query, Query &response);
+  Status QueryDeed(Query const &query, Query &response);
   Status Stake(Query const &query, Query &response);
   Status CooldownStake(Query const &query, Query &response);
 

@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,8 +18,10 @@
 
 #include "chain/transaction_rpc_serializers.hpp"
 #include "core/macros.hpp"
+#include "ledger/storage_unit/transaction_storage_engine_interface.hpp"
 #include "ledger/storage_unit/transaction_store_sync_service.hpp"
 #include "telemetry/counter.hpp"
+#include "telemetry/gauge.hpp"
 #include "telemetry/registry.hpp"
 
 #include <cassert>
@@ -71,7 +73,7 @@ namespace fetch {
 namespace ledger {
 
 TransactionStoreSyncService::TransactionStoreSyncService(Config const &cfg, MuddleEndpoint &muddle,
-                                                         ObjectStorePtr    store,
+                                                         TransactionStorageEngineInterface &store,
                                                          TxFinderProtocol *tx_finder_protocol,
                                                          TrimCacheCallback trim_cache_callback)
   : trim_cache_callback_(std::move(trim_cache_callback))
@@ -82,7 +84,7 @@ TransactionStoreSyncService::TransactionStoreSyncService(Config const &cfg, Mudd
   , muddle_(muddle)
   , client_(std::make_shared<Client>("R:TxSync-L" + std::to_string(cfg_.lane_id), muddle,
                                      SERVICE_LANE, CHANNEL_RPC))
-  , store_(std::move(store))
+  , store_(store)
   , verifier_(*this, cfg_.verification_threads, "TxV-L" + std::to_string(cfg_.lane_id))
   , stored_transactions_{telemetry::Registry::Instance().CreateCounter(
         "ledger_tx_store_sync_service_stored_transactions_total",
@@ -99,6 +101,10 @@ TransactionStoreSyncService::TransactionStoreSyncService(Config const &cfg, Mudd
   , subtree_failure_total_{telemetry::Registry::Instance().CreateCounter(
         "ledger_tx_store_sync_service_subtree_failure_total",
         "The total number of subtree request failures observed")}
+  , current_tss_state_{telemetry::Registry::Instance().CreateGauge<uint64_t>(
+        "current_tss_state", "The state in the state machine of the tx store")}
+  , current_tss_peers_{telemetry::Registry::Instance().CreateGauge<uint64_t>(
+        "current_tss_peers", "The number of peers the sync can use")}
 {
   state_machine_->RegisterHandler(State::INITIAL, this, &TransactionStoreSyncService::OnInitial);
   state_machine_->RegisterHandler(State::QUERY_OBJECT_COUNTS, this,
@@ -118,18 +124,20 @@ TransactionStoreSyncService::TransactionStoreSyncService(Config const &cfg, Mudd
 
   state_machine_->OnStateChange([](State new_state, State /* old_state */) {
     FETCH_UNUSED(new_state);
-    FETCH_LOG_DEBUG(LOGGING_NAME, "Updating state to: ", ToString(new_state));
+    FETCH_LOG_DEBUG(LOGGING_NAME, "*** Updating state to: ", ToString(new_state));
   });
 }
 
 TransactionStoreSyncService::~TransactionStoreSyncService()
 {
   client_ = nullptr;
-  store_  = nullptr;
 }
 
 TransactionStoreSyncService::State TransactionStoreSyncService::OnInitial()
 {
+  current_tss_state_->set(static_cast<uint64_t>(state_machine_->state()));
+  current_tss_peers_->set(muddle_.GetDirectlyConnectedPeers().size());
+
   if (muddle_.GetDirectlyConnectedPeers().empty())
   {
     return State::INITIAL;
@@ -140,6 +148,9 @@ TransactionStoreSyncService::State TransactionStoreSyncService::OnInitial()
 
 TransactionStoreSyncService::State TransactionStoreSyncService::OnQueryObjectCounts()
 {
+  current_tss_state_->set(static_cast<uint64_t>(state_machine_->state()));
+  current_tss_peers_->set(muddle_.GetDirectlyConnectedPeers().size());
+
   for (auto const &connection : muddle_.GetDirectlyConnectedPeers())
   {
     FETCH_LOG_DEBUG(LOGGING_NAME, "Query objects from: muddle://", connection.ToBase64());
@@ -157,8 +168,12 @@ TransactionStoreSyncService::State TransactionStoreSyncService::OnQueryObjectCou
 
 TransactionStoreSyncService::State TransactionStoreSyncService::OnResolvingObjectCounts()
 {
-  auto counts = pending_object_count_.Resolve();
-  for (auto &result : pending_object_count_.Get(MAX_OBJECT_COUNT_RESOLUTION_PER_CYCLE))
+  current_tss_state_->set(static_cast<uint64_t>(state_machine_->state()));
+  auto const counts    = pending_object_count_.Resolve();
+  auto const completed = pending_object_count_.Get(MAX_OBJECT_COUNT_RESOLUTION_PER_CYCLE);
+  pending_object_count_.DiscardFailures();
+
+  for (auto &result : completed)
   {
     max_object_count_ = std::max(max_object_count_, result.promised);
   }
@@ -193,8 +208,8 @@ TransactionStoreSyncService::State TransactionStoreSyncService::OnResolvingObjec
   // where roots to sync are all objects with the key starting with those bits
   if (max_object_count_ == 0)
   {
-    FETCH_LOG_DEBUG(LOGGING_NAME, "Network appears to have no transactions! Number of peers: ",
-                    muddle_.GetDirectlyConnectedPeers().size());
+    FETCH_LOG_INFO(LOGGING_NAME, "Network appears to have no transactions! Number of peers: ",
+                   muddle_.GetDirectlyConnectedPeers().size());
   }
   else
   {
@@ -221,6 +236,7 @@ TransactionStoreSyncService::State TransactionStoreSyncService::OnResolvingObjec
 
 TransactionStoreSyncService::State TransactionStoreSyncService::OnQuerySubtree()
 {
+  current_tss_state_->set(static_cast<uint64_t>(state_machine_->state()));
   assert(!roots_to_sync_.empty());
   auto const orig_num_of_roots{roots_to_sync_.size()};
 
@@ -277,6 +293,7 @@ TransactionStoreSyncService::State TransactionStoreSyncService::OnQuerySubtree()
 
 TransactionStoreSyncService::State TransactionStoreSyncService::OnResolvingSubtree()
 {
+  current_tss_state_->set(static_cast<uint64_t>(state_machine_->state()));
   auto counts = pending_subtree_.Resolve();
 
   // resolve the sub-trees promises
@@ -336,20 +353,27 @@ TransactionStoreSyncService::State TransactionStoreSyncService::OnResolvingSubtr
 
 TransactionStoreSyncService::State TransactionStoreSyncService::OnQueryObjects()
 {
-  std::vector<ResourceID> rids;
-  rids.reserve(TX_FINDER_PROTO_LIMIT);
+  current_tss_state_->set(static_cast<uint64_t>(state_machine_->state()));
+  DigestSet digests{};
+  digests.reserve(TX_FINDER_PROTO_LIMIT);
 
   // collect up all the explicitly requested transactions from the block coordinator process
-  ResourceID rid;
-  while (rids.size() < TX_FINDER_PROTO_LIMIT && tx_finder_protocol_->Pop(rid))
+  Digest digest;
+  while (digests.size() < TX_FINDER_PROTO_LIMIT && tx_finder_protocol_->Pop(digest))
   {
-    rids.push_back(rid);
+    digests.emplace(digest);
   }
 
   // Early exit: If it is not time to request the recent transaction and there are no explicit
   // requests for transactions then we should simply hold in this state
-  bool const is_time_to_pull{fetch_object_wait_timeout_.IsDue()};
-  if (rids.empty() && !is_time_to_pull)
+
+  bool const need_to_request_specific = !digests.empty();
+
+  // Note: ONLY make one rpc call here to a client since there is a bug
+  // when doing multiple adds to the pending_objects_ with the same connection
+  bool const is_time_to_pull = fetch_object_wait_timeout_.IsDue() && !need_to_request_specific;
+
+  if (!need_to_request_specific && !is_time_to_pull)
   {
     state_machine_->Delay(10ms);
     return State::QUERY_OBJECTS;
@@ -363,19 +387,27 @@ TransactionStoreSyncService::State TransactionStoreSyncService::OnQueryObjects()
     {
       auto p1 = PromiseOfTxList(client_->CallSpecificAddress(
           connection, RPC_TX_STORE_SYNC, TransactionStoreSyncProtocol::PULL_OBJECTS));
-      pending_objects_.Add(connection, p1);
+      if (!pending_objects_.Add(connection, p1))
+      {
+        FETCH_LOG_WARN(LOGGING_NAME, "Failed to add promise of transactions to queue");
+      }
+
       FETCH_LOG_DEBUG(LOGGING_NAME, "Lane ", cfg_.lane_id, ": Periodically requesting recent TXs");
     }
 
-    if (!rids.empty())
+    if (need_to_request_specific)
     {
-      FETCH_LOG_WARN(LOGGING_NAME, "Lane ", cfg_.lane_id, ": Explicitly requesting ", rids.size(),
-                     " TXs");
+      FETCH_LOG_WARN(LOGGING_NAME, "Lane ", cfg_.lane_id, ": Explicitly requesting ",
+                     digests.size(), " TXs");
 
-      auto p2 = PromiseOfTxList(
-          client_->CallSpecificAddress(connection, RPC_TX_STORE_SYNC,
-                                       TransactionStoreSyncProtocol::PULL_SPECIFIC_OBJECTS, rids));
-      pending_objects_.Add(connection, p2);
+      auto p2 = PromiseOfTxList(client_->CallSpecificAddress(
+          connection, RPC_TX_STORE_SYNC, TransactionStoreSyncProtocol::PULL_SPECIFIC_OBJECTS,
+          digests));
+      if (!pending_objects_.Add(connection, p2))
+      {
+        FETCH_LOG_WARN(LOGGING_NAME,
+                       "Failed to add promise of transactions to queue - call specific");
+      }
     }
   }
 
@@ -392,6 +424,7 @@ TransactionStoreSyncService::State TransactionStoreSyncService::OnQueryObjects()
 
 TransactionStoreSyncService::State TransactionStoreSyncService::OnResolvingObjects()
 {
+  current_tss_state_->set(static_cast<uint64_t>(state_machine_->state()));
   auto counts = pending_objects_.Resolve();
 
   std::size_t synced_tx{0};
@@ -437,6 +470,7 @@ TransactionStoreSyncService::State TransactionStoreSyncService::OnResolvingObjec
 
 TransactionStoreSyncService::State TransactionStoreSyncService::OnTrimCache()
 {
+  current_tss_state_->set(static_cast<uint64_t>(state_machine_->state()));
   if (trim_cache_callback_)
   {
     trim_cache_callback_();
@@ -449,12 +483,12 @@ void TransactionStoreSyncService::OnTransaction(TransactionPtr const &tx)
 {
   ResourceID const rid(tx->digest());
 
-  if (!store_->Has(rid))
+  if (!store_.Has(tx->digest()))
   {
     FETCH_LOG_DEBUG(LOGGING_NAME, "Verified Sync TX: ", tx->digest().ToBase64(), " (",
                     tx->contract_digest().display(), ')');
 
-    store_->Set(rid, *tx, true);
+    store_.Add(*tx, true);
     stored_transactions_->increment();
   }
 }

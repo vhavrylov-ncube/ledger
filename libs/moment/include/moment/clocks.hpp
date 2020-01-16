@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -27,11 +27,17 @@ enum class ClockType
   SYSTEM,
 };
 
+enum class TimeAccuracy
+{
+  SECONDS,
+  MILLISECONDS,
+};
+
 ClockPtr           GetClock(char const *name, ClockType default_type = ClockType::SYSTEM);
 AdjustableClockPtr CreateAdjustableClock(char const *name, ClockType type = ClockType::SYSTEM);
 
 // Convenience function to provide the time as a uint64
-uint64_t GetTime(moment::ClockPtr const &clock);
+uint64_t GetTime(moment::ClockPtr const &clock, TimeAccuracy accuracy = TimeAccuracy::SECONDS);
 
 }  // namespace moment
 }  // namespace fetch

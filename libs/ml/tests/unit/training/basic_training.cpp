@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -20,9 +20,12 @@
 #include "math/activation_functions/softmax.hpp"
 #include "math/statistics/mean.hpp"
 #include "ml/layers/fully_connected.hpp"
-#include "ml/ops/activation.hpp"
-#include "ml/ops/loss_functions.hpp"
-#include "ml/ops/weights.hpp"
+#include "ml/ops/activations/relu.hpp"
+#include "ml/ops/activations/sigmoid.hpp"
+#include "ml/ops/activations/softmax.hpp"
+#include "ml/ops/loss_functions/cross_entropy_loss.hpp"
+#include "ml/ops/loss_functions/mean_square_error_loss.hpp"
+#include "ml/ops/loss_functions/softmax_cross_entropy_loss.hpp"
 #include "test_types.hpp"
 
 namespace fetch {
@@ -71,7 +74,7 @@ void PlusOneTest()
   using SizeType = fetch::math::SizeType;
   using DataType = typename TypeParam::Type;
 
-  auto alpha       = DataType(0.005);
+  auto alpha       = fetch::math::Type<DataType>("0.005");
   auto input_size  = SizeType(1);
   auto output_size = SizeType(1);
   auto n_batches   = SizeType(300);
@@ -95,16 +98,16 @@ void PlusOneTest()
   ////////////////////////////////////////
 
   TypeParam data{{4, 1}};
-  data.Set(0, 0, static_cast<DataType>(1));
-  data.Set(1, 0, DataType(2));
-  data.Set(2, 0, DataType(3));
-  data.Set(3, 0, DataType(4));
+  data.Set(0, 0, DataType{1});
+  data.Set(1, 0, DataType{2});
+  data.Set(2, 0, DataType{3});
+  data.Set(3, 0, DataType{4});
 
   TypeParam gt{{4, 1}};
-  gt.Set(0, 0, DataType(2));
-  gt.Set(1, 0, DataType(3));
-  gt.Set(2, 0, DataType(4));
-  gt.Set(3, 0, DataType(5));
+  gt.Set(0, 0, DataType{2});
+  gt.Set(1, 0, DataType{3});
+  gt.Set(2, 0, DataType{4});
+  gt.Set(3, 0, DataType{5});
 
   /////////////////////////
   /// ONE TRAINING STEP ///
@@ -112,7 +115,7 @@ void PlusOneTest()
 
   TypeParam cur_gt{{1, 1}};
   TypeParam cur_input{{1, 1}};
-  auto      loss = static_cast<DataType>(0);
+  auto      loss = DataType{0};
 
   for (SizeType step{0}; step < 4; ++step)
   {
@@ -141,7 +144,7 @@ void PlusOneTest()
 
   for (std::size_t i = 0; i < n_batches; ++i)
   {
-    loss = static_cast<DataType>(0);
+    loss = DataType{0};
 
     for (SizeType step{0}; step < 4; ++step)
     {
@@ -178,7 +181,7 @@ void CategoricalPlusOneTest(bool add_softmax = false)
   TypeParam n_classes{1};
   n_classes.At(0) = DataType(4);
 
-  auto alpha       = DataType(0.01);
+  auto alpha       = fetch::math::Type<DataType>("0.01");
   auto input_size  = SizeType(n_classes.At(0));
   auto output_size = SizeType(n_classes.At(0));
   auto n_batches   = SizeType(300);
@@ -206,24 +209,24 @@ void CategoricalPlusOneTest(bool add_softmax = false)
   ////////////////////////////////////////
 
   TypeParam data{{n_data, SizeType(n_classes.At(0))}};
-  data.Fill(static_cast<DataType>(0));
-  data.Set(0, 0, static_cast<DataType>(1));
-  data.Set(1, 1, static_cast<DataType>(1));
-  data.Set(2, 2, static_cast<DataType>(1));
-  data.Set(3, 3, static_cast<DataType>(1));
+  data.Fill(DataType{0});
+  data.Set(0, 0, DataType{1});
+  data.Set(1, 1, DataType{1});
+  data.Set(2, 2, DataType{1});
+  data.Set(3, 3, DataType{1});
 
   TypeParam gt{{n_data, SizeType(n_classes.At(0))}};
-  gt.Fill(static_cast<DataType>(0));
-  gt.Set(0, 1, static_cast<DataType>(1));
-  gt.Set(1, 2, static_cast<DataType>(1));
-  gt.Set(2, 3, static_cast<DataType>(1));
-  gt.Set(3, 0, static_cast<DataType>(1));
+  gt.Fill(DataType{0});
+  gt.Set(0, 1, DataType{1});
+  gt.Set(1, 2, DataType{1});
+  gt.Set(2, 3, DataType{1});
+  gt.Set(3, 0, DataType{1});
 
   /////////////////////////
   /// ONE TRAINING STEP ///
   /////////////////////////
 
-  auto loss = static_cast<DataType>(0);
+  auto loss = DataType{0};
 
   for (SizeType step{0}; step < n_data; ++step)
   {
@@ -252,7 +255,7 @@ void CategoricalPlusOneTest(bool add_softmax = false)
 
   for (std::size_t i = 0; i < n_batches; ++i)
   {
-    loss = static_cast<DataType>(0);
+    loss = DataType{0};
 
     for (SizeType step{0}; step < n_data; ++step)
     {
@@ -289,7 +292,7 @@ void CategoricalXorTest(bool add_softmax = false)
   TypeParam n_classes{1};
   n_classes.At(0) = DataType(2);
 
-  auto alpha       = DataType(0.01);
+  auto alpha       = fetch::math::Type<DataType>("0.01");
   auto input_size  = SizeType(n_classes.At(0));
   auto output_size = SizeType(n_classes.At(0));
   auto n_batches   = SizeType(300);
@@ -325,7 +328,7 @@ void CategoricalXorTest(bool add_softmax = false)
 
   TypeParam cur_gt{{SizeType(1), SizeType(n_classes.At(0))}};
   TypeParam cur_input{{SizeType(1), SizeType(n_classes.At(0))}};
-  auto      loss = static_cast<DataType>(0);
+  auto      loss = DataType{0};
 
   for (SizeType step{0}; step < n_data; ++step)
   {
@@ -354,7 +357,7 @@ void CategoricalXorTest(bool add_softmax = false)
 
   for (std::size_t i = 0; i < n_batches; ++i)
   {
-    loss = static_cast<DataType>(0);
+    loss = DataType{0};
 
     for (SizeType step{0}; step < n_data; ++step)
     {

@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -29,8 +29,9 @@
 #include "math/linalg/blas/gemm_tn_vector.hpp"
 #include "math/linalg/prototype.hpp"
 #include "math/meta/math_type_traits.hpp"
-#include "math/tensor_reduce.hpp"
+#include "math/tensor/tensor_reduce.hpp"
 #include "vectorise/math/standard_functions.hpp"
+#include "vectorise/memory/parallel_dispatcher.hpp"
 
 #include <cassert>
 #include <numeric>
@@ -41,19 +42,6 @@ namespace math {
 
 // TODO (private 854) - vectorisation implementations not yet called
 namespace details_vectorisation {
-
-/**
- * Min function for returning the smallest value in an array
- * @tparam ArrayType
- * @param array
- * @return
- */
-template <typename ArrayType>
-void Min(ArrayType const &array, typename ArrayType::Type &ret)
-{
-  ret = array.data().in_parallel().Reduce(memory::Range(0, array.size()),
-                                          [](auto const &a, auto const &b) { return min(a, b); });
-}
 
 /**
  * return the product of all elements in the array
@@ -158,7 +146,7 @@ meta::IfIsMathArray<ArrayType, void> BooleanMask(ArrayType const &input_array,
   SizeType counter{0};
   while (rit.is_valid())
   {
-    assert((*it2 == 1) || (*it2 == 0));
+    assert((*it2 == typename ArrayType::Type{1}) || (*it2 == typename ArrayType::Type{0}));
     if (static_cast<uint64_t>(*it2))
     {
       *rit = *it1;
@@ -274,6 +262,14 @@ T Product(std::vector<T> const &obj1)
 template <typename ArrayType>
 meta::IfIsMathArray<ArrayType, void> Max(ArrayType const &array, typename ArrayType::Type &ret)
 {
+  // if (array.size() >= array.data().padded_size())
+  // {
+  //   ret = array.data().in_parallel().Reduce(
+  //       [](auto const &a, auto const &b) { return fetch::vectorise::Max(a, b); },
+  //       [](auto const &a) { return fetch::vectorise::Max(a); });
+  // }
+  // else
+  // {
   ret = numeric_lowest<typename ArrayType::Type>();
   for (typename ArrayType::Type const &e : array)
   {
@@ -282,6 +278,7 @@ meta::IfIsMathArray<ArrayType, void> Max(ArrayType const &array, typename ArrayT
       ret = e;
     }
   }
+  // }
 }
 
 template <typename ArrayType>
@@ -394,6 +391,15 @@ T Max(std::vector<T> const &obj1)
 template <typename ArrayType>
 meta::IfIsMathArray<ArrayType, void> Min(ArrayType const &array, typename ArrayType::Type &ret)
 {
+  // if (array.size() >= array.data().padded_size())
+  // {
+  //   ret = array.data().in_parallel().Reduce(
+  //       [](auto const &a, auto const &b) { return fetch::vectorise::Min(a, b); },
+  //       [](auto const &a) { return fetch::vectorise::Min(a); },
+  //       fetch::math::numeric_max<typename ArrayType::Type>());
+  // }
+  // else
+  // {
   ret = numeric_max<typename ArrayType::Type>();
   for (typename ArrayType::Type const &e : array)
   {
@@ -402,6 +408,7 @@ meta::IfIsMathArray<ArrayType, void> Min(ArrayType const &array, typename ArrayT
       ret = e;
     }
   }
+  // }
 }
 
 template <typename ArrayType>
@@ -532,10 +539,11 @@ meta::IfIsMathArray<ArrayType, ArrayType> Maximum(ArrayType const &array1, Array
 template <typename ArrayType, typename T, typename = std::enable_if_t<meta::IsArithmetic<T>>>
 meta::IfIsMathArray<ArrayType, void> Sum(ArrayType const &array1, T &ret)
 {
-  ret = typename ArrayType::Type(0);
+  using DataType = typename ArrayType::Type;
+  ret            = typename ArrayType::Type(0);
   for (auto &val : array1)
   {
-    ret += val;
+    ret = static_cast<DataType>(ret + val);
   }
 }
 
@@ -559,9 +567,9 @@ void ReduceSum(ArrayType const &obj1, SizeType axis, ArrayType &ret)
 {
 
   using DataType = typename ArrayType::Type;
-  ret.Fill(static_cast<DataType>(0));
+  ret.Fill(DataType{0});
 
-  Reduce(axis, [](DataType const &x, DataType &y) { y += x; }, obj1, ret);
+  Reduce(axis, [](DataType const &x, DataType &y) { y = static_cast<DataType>(y + x); }, obj1, ret);
 }
 
 /**
@@ -593,9 +601,9 @@ void ReduceSum(ArrayType const &obj1, std::vector<SizeType> axes, ArrayType &ret
 {
 
   using DataType = typename ArrayType::Type;
-  ret.Fill(static_cast<DataType>(0));
+  ret.Fill(DataType{0});
 
-  Reduce(axes, [](DataType const &x, DataType &y) { y += x; }, obj1, ret);
+  Reduce(axes, [](DataType const &x, DataType &y) { y = static_cast<DataType>(y + x); }, obj1, ret);
 }
 
 /**
@@ -714,6 +722,7 @@ meta::IfIsMathArray<ArrayType, ArrayType> ReduceMean(ArrayType const &          
 template <typename ArrayType>
 void PeakToPeak(ArrayType const &array, typename ArrayType::Type &ret)
 {
+  using DataType               = typename ArrayType::Type;
   ret                          = numeric_lowest<typename ArrayType::Type>();
   typename ArrayType::Type min = numeric_max<typename ArrayType::Type>();
   auto                     it  = array.cbegin();
@@ -729,7 +738,7 @@ void PeakToPeak(ArrayType const &array, typename ArrayType::Type &ret)
     }
     ++it;
   }
-  ret = ret - min;
+  ret = static_cast<DataType>(ret - min);
 }
 
 template <typename ArrayType>

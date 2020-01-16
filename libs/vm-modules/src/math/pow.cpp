@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@
 
 #include "math/meta/math_type_traits.hpp"
 #include "math/standard_functions/pow.hpp"
+#include "vm/fixed.hpp"
 #include "vm/module.hpp"
+#include "vm/vm.hpp"
 #include "vm_modules/math/pow.hpp"
 
 #include <cmath>
@@ -39,14 +41,22 @@ fetch::math::meta::IfIsMath<T, T> Pow(VM * /*vm*/, T const &a, T const &b)
   return x;
 }
 
+template <typename T>
+IfIsPtrFixed128<T, Ptr<T>> PowPtr(VM *vm, Ptr<T> const &a, Ptr<T> const &b)
+{
+  fixed_point::fp128_t x = a->data_;
+  fixed_point::fp128_t y = b->data_;
+  fetch::math::Pow(x, x, y);
+  return Ptr<Fixed128>(new Fixed128(vm, x));
+}
+
 }  // namespace
 
-void BindPow(Module &module)
+void BindPow(Module &module, bool const /*enable_experimental*/)
 {
-  module.CreateFreeFunction("pow", &Pow<float_t>);
-  module.CreateFreeFunction("pow", &Pow<double_t>);
-  module.CreateFreeFunction("pow", &Pow<fixed_point::fp32_t>);
-  module.CreateFreeFunction("pow", &Pow<fixed_point::fp64_t>);
+  module.CreateFreeFunction("pow", &Pow<fixed_point::fp32_t>, ChargeAmount{6});
+  module.CreateFreeFunction("pow", &Pow<fixed_point::fp64_t>, ChargeAmount{8});
+  module.CreateFreeFunction("pow", &PowPtr<Fixed128>, ChargeAmount{12});
 }
 
 }  // namespace math

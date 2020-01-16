@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,7 +18,10 @@
 
 #include "vm/address.hpp"
 #include "vm/array.hpp"
+#include "vm/fixed.hpp"
 #include "vm/map.hpp"
+#include "vm/pair.hpp"
+#include "vm_modules/core/byte_array_wrapper.hpp"
 #include "vm_test_toolkit.hpp"
 
 #include "gmock/gmock.h"
@@ -26,6 +29,7 @@
 #include <sstream>
 
 using namespace fetch::vm;
+using fetch::vm_modules::ByteArrayWrapper;
 
 namespace {
 
@@ -110,16 +114,148 @@ TEST_F(StateTests, MapDeserializeTest)
   EXPECT_TRUE(static_cast<bool>(map));
 }
 
+TEST_F(StateTests, PairDeserializeBothTest)
+{
+  static char const *ser_src = R"(
+    function main()
+      var data = Pair<String, String>();
+      data.first("First");
+      data.second("Second");
+      var state = State<Pair<String, String>>("pair");
+      state.set(data);
+    endfunction
+  )";
+
+  EXPECT_CALL(toolkit.observer(), Write("pair", _, _));
+
+  ASSERT_TRUE(toolkit.Compile(ser_src));
+  ASSERT_TRUE(toolkit.Run());
+
+  static char const *deser_src = R"(
+    function main() : Pair<String, String>
+      var state = State<Pair<String, String>>("pair");
+      return state.get(Pair<String, String>());
+    endfunction
+  )";
+
+  EXPECT_CALL(toolkit.observer(), Exists("pair"));
+  EXPECT_CALL(toolkit.observer(), Read("pair", _, _));
+
+  ASSERT_TRUE(toolkit.Compile(deser_src));
+  Variant ret;
+  ASSERT_TRUE(toolkit.Run(&ret));
+  auto const pair{ret.Get<Ptr<IPair>>()};
+  EXPECT_TRUE(static_cast<bool>(pair));
+}
+
+TEST_F(StateTests, PairDeserializeFirstOnlyTest)
+{
+  static char const *ser_src = R"(
+    function main()
+      var data = Pair<String, String>();
+      data.first("First");
+      var state = State<Pair<String, String>>("pair");
+      state.set(data);
+    endfunction
+  )";
+
+  EXPECT_CALL(toolkit.observer(), Write("pair", _, _));
+
+  ASSERT_TRUE(toolkit.Compile(ser_src));
+  ASSERT_TRUE(toolkit.Run());
+
+  static char const *deser_src = R"(
+    function main() : Pair<String, String>
+      var state = State<Pair<String, String>>("pair");
+      return state.get(Pair<String, String>());
+    endfunction
+  )";
+
+  EXPECT_CALL(toolkit.observer(), Exists("pair"));
+  EXPECT_CALL(toolkit.observer(), Read("pair", _, _));
+
+  ASSERT_TRUE(toolkit.Compile(deser_src));
+  Variant ret;
+  ASSERT_TRUE(toolkit.Run(&ret));
+  auto const pair{ret.Get<Ptr<IPair>>()};
+  EXPECT_TRUE(static_cast<bool>(pair));
+}
+
+TEST_F(StateTests, PairDeserializeSecondOnlyTest)
+{
+  static char const *ser_src = R"(
+    function main()
+      var data = Pair<String, String>();
+      data.second("Second");
+      var state = State<Pair<String, String>>("pair");
+      state.set(data);
+    endfunction
+  )";
+
+  EXPECT_CALL(toolkit.observer(), Write("pair", _, _));
+
+  ASSERT_TRUE(toolkit.Compile(ser_src));
+  ASSERT_TRUE(toolkit.Run());
+
+  static char const *deser_src = R"(
+    function main() : Pair<String, String>
+      var state = State<Pair<String, String>>("pair");
+      return state.get(Pair<String, String>());
+    endfunction
+  )";
+
+  EXPECT_CALL(toolkit.observer(), Exists("pair"));
+  EXPECT_CALL(toolkit.observer(), Read("pair", _, _));
+
+  ASSERT_TRUE(toolkit.Compile(deser_src));
+  Variant ret;
+  ASSERT_TRUE(toolkit.Run(&ret));
+  auto const pair{ret.Get<Ptr<IPair>>()};
+  EXPECT_TRUE(static_cast<bool>(pair));
+}
+
+TEST_F(StateTests, PairDeserializeNoneTest)
+{
+  static char const *ser_src = R"(
+    function main()
+      var data = Pair<String, String>();
+      var state = State<Pair<String, String>>("pair");
+      state.set(data);
+    endfunction
+  )";
+
+  EXPECT_CALL(toolkit.observer(), Write("pair", _, _));
+
+  ASSERT_TRUE(toolkit.Compile(ser_src));
+  ASSERT_TRUE(toolkit.Run());
+
+  static char const *deser_src = R"(
+    function main() : Pair<String, String>
+      var state = State<Pair<String, String>>("pair");
+      return state.get(Pair<String, String>());
+    endfunction
+  )";
+
+  EXPECT_CALL(toolkit.observer(), Exists("pair"));
+  EXPECT_CALL(toolkit.observer(), Read("pair", _, _));
+
+  ASSERT_TRUE(toolkit.Compile(deser_src));
+  Variant ret;
+  ASSERT_TRUE(toolkit.Run(&ret));
+  auto const pair{ret.Get<Ptr<IPair>>()};
+  EXPECT_TRUE(static_cast<bool>(pair));
+}
+
 TEST_F(StateTests, ArrayDeserializeTest)
 {
   static char const *ser_src = R"(
     function main()
-      var data = Array<Float64>(3);
-      data[0] = 0.1;
-      data[1] = 2.3;
-      data[2] = 4.5;
+      var data = Array<UInt64>(3);
+      data[0] = 1u64;
+      data[1] = 23u64;
+      data[2] = 45u64;
 
-      State<Array<Float64>>("state").set(data);
+      State<Array<UInt64>>("state").set(data);
     endfunction
   )";
 
@@ -129,9 +265,9 @@ TEST_F(StateTests, ArrayDeserializeTest)
   ASSERT_TRUE(toolkit.Run());
 
   static char const *deser_src = R"(
-    function main() : Array<Float64>
-      var state = State<Array<Float64>>("state");
-      return state.get(Array<Float64>(0));
+    function main() : Array<UInt64>
+      var state = State<Array<UInt64>>("state");
+      return state.get(Array<UInt64>(0));
     endfunction
   )";
 
@@ -147,20 +283,20 @@ TEST_F(StateTests, ArrayDeserializeTest)
   auto array{res.Get<Ptr<IArray>>()};
   ASSERT_TRUE(static_cast<bool>(array));
   ASSERT_EQ(int32_t{3}, array->Count());
-  EXPECT_EQ(0.1, array->PopFrontOne().Get<double>());
-  EXPECT_EQ(2.3, array->PopFrontOne().Get<double>());
-  EXPECT_EQ(4.5, array->PopFrontOne().Get<double>());
+  EXPECT_EQ(1, array->PopFrontOne().Get<uint64_t>());
+  EXPECT_EQ(23, array->PopFrontOne().Get<uint64_t>());
+  EXPECT_EQ(45, array->PopFrontOne().Get<uint64_t>());
 }
 
 // Regression test for issue 1072: used to segfault prior to fix
 TEST_F(StateTests, querying_state_constructed_from_null_address_fails_gracefully)
 {
   static char const *TEXT = R"(
-    function main() : Float64
+    function main() : UInt64
       var nullAddress : Address;
-      var supply = State<Float64>(nullAddress);
-      supply.set(3.7);
-      return supply.get(0.0);
+      var supply = State<UInt64>(nullAddress);
+      supply.set(3u64);
+      return supply.get(0u64);
     endfunction
   )";
 
@@ -171,18 +307,16 @@ TEST_F(StateTests, querying_state_constructed_from_null_address_fails_gracefully
 TEST_F(StateTests, querying_state_constructed_from_null_string_fails_gracefully)
 {
   static char const *TEXT = R"(
-    function main() : Float64
+    function main() : UInt64
       var nullName : String;
-      var supply = State<Float64>(nullName);
-      supply.set(3.7);
-      return supply.get(0.0);
+      var supply = State<UInt64>(nullName);
+      supply.set(3u64);
+      return supply.get(0u64);
     endfunction
   )";
 
   ASSERT_TRUE(toolkit.Compile(TEXT));
-
-  Variant output;
-  ASSERT_FALSE(toolkit.Run(&output));
+  ASSERT_FALSE(toolkit.Run());
 }
 
 TEST_F(StateTests, serialising_compound_object_with_null_values_does_not_segfault)
@@ -242,8 +376,8 @@ TEST_F(StateTests, test_serialisation_of_complex_type)
 }
 
 template <typename T>
-std::enable_if_t<!IsPtr<T>::value> ArrayFromVariant(Variant const &array, int32_t expected_size,
-                                                    Ptr<Array<T>> &out)
+std::enable_if_t<!IsPtr<T>> ArrayFromVariant(Variant const &array, int32_t expected_size,
+                                             Ptr<Array<T>> &out)
 {
   out = array.Get<Ptr<Array<T>>>();
   ASSERT_TRUE(out);
@@ -251,7 +385,7 @@ std::enable_if_t<!IsPtr<T>::value> ArrayFromVariant(Variant const &array, int32_
 }
 
 template <typename T>
-std::enable_if_t<IsPtr<T>::value && std::is_same<IArray, std::decay_t<GetManagedType<T>>>::value>
+std::enable_if_t<IsPtr<T> && std::is_same<IArray, std::decay_t<GetManagedType<T>>>::value>
 ArrayFromVariant(Variant const &array, int32_t expected_size, Ptr<Array<T>> &out)
 {
   out = array.Get<Ptr<Array<T>>>();
@@ -340,7 +474,7 @@ TEST_F(StateTests, test_serialisation_of_complex_type_2)
 TEST_F(StateTests, test_serialisation_of_structured_data)
 {
   static char const *ser_src = R"(
-    function main()
+    function main(buffer : Buffer)
 
       var arr_i32 = Array<Int32>(1);
       arr_i32[0] = 10i32;
@@ -360,6 +494,9 @@ TEST_F(StateTests, test_serialisation_of_structured_data)
       data.set("u32", 512u32);
       data.set("i64", 1024i64);
       data.set("u64", 2048u64);
+      data.set("address", Address("MnrRHdvCkdZodEwM855vemS5V3p2hiWmcSQ8JEzD4ZjPdsYtB"));
+      data.set("uint256", UInt256(12297829382473034410u64));
+      data.set("buffer", buffer);
       data.set("arr_i32", arr_i32);
       data.set("arr_i64", arr_i64);
       data.set("arr_u32", arr_u32);
@@ -370,14 +507,18 @@ TEST_F(StateTests, test_serialisation_of_structured_data)
     endfunction
   )";
 
+  ConstByteArray expected_buffer{"QWERTYUIOPasdfghjkl"};
+
   std::string const state_name{"state_data"};
   EXPECT_CALL(toolkit.observer(), Write(state_name, _, _));
 
   ASSERT_TRUE(toolkit.Compile(ser_src));
-  ASSERT_TRUE(toolkit.Run());
+  ASSERT_TRUE(
+      toolkit.RunWithParams(nullptr, std::numeric_limits<ChargeAmount>::max(),
+                            toolkit.vm().CreateNewObject<ByteArrayWrapper>(expected_buffer)));
 
   static char const *deser_src = R"(
-    function main()
+    function main(buffer : Buffer) : Buffer
       var retrieved_state = State<StructuredData>("state_data");
       var data = retrieved_state.get();
 
@@ -386,6 +527,11 @@ TEST_F(StateTests, test_serialisation_of_structured_data)
       assert(data.getUInt32("u32") == 512u32);
       assert(data.getInt64("i64") == 1024i64);
       assert(data.getUInt64("u64") == 2048u64);
+      assert(data.getAddress("address") == Address("MnrRHdvCkdZodEwM855vemS5V3p2hiWmcSQ8JEzD4ZjPdsYtB"));
+      printLn("data.getUInt256(\"uint256\") = " + toString(data.getUInt256("uint256")));
+      printLn("UInt256(12297829382473034410u64) = " + toString(UInt256(12297829382473034410u64)));
+      assert(data.getUInt256("uint256") == UInt256(12297829382473034410u64));
+      //assert(data.getBuffer("buffer") == buffer);
 
       var arr_i32 = data.getArrayInt32("arr_i32");
       assert(arr_i32.count() == 1);
@@ -403,14 +549,24 @@ TEST_F(StateTests, test_serialisation_of_structured_data)
       assert(arr_u64.count() == 1);
       assert(arr_u64[0] == 200u64);
 
+      return data.getBuffer("buffer");
     endfunction
   )";
 
+  toolkit.setStdout(std::cout);
   EXPECT_CALL(toolkit.observer(), Exists(state_name));
-  EXPECT_CALL(toolkit.observer(), Read(state_name, _, _));
+  EXPECT_CALL(toolkit.observer(), Read(state_name, _, _)).Times(2);
 
   ASSERT_TRUE(toolkit.Compile(deser_src));
-  ASSERT_TRUE(toolkit.Run());
+
+  Variant buffer;
+  ASSERT_TRUE(
+      toolkit.RunWithParams(&buffer, std::numeric_limits<ChargeAmount>::max(),
+                            toolkit.vm().CreateNewObject<ByteArrayWrapper>(expected_buffer)));
+
+  auto const acquired_buffer{buffer.Get<Ptr<ByteArrayWrapper>>()};
+  EXPECT_TRUE(acquired_buffer);
+  EXPECT_EQ(expected_buffer, acquired_buffer->byte_array());
 }
 
 TEST_F(StateTests,
@@ -513,6 +669,143 @@ TEST_F(
   ASSERT_TRUE(toolkit.Run());
 
   ASSERT_EQ(out.str(), "Bob.Bob");
+}
+
+TEST_F(StateTests, test_serialisation_of_fixed_point32)
+{
+  static char const *ser_src = R"(
+    function main()
+      var ref_array = Array<Fixed32>(3);
+      ref_array[0] = 1.0fp32;
+      ref_array[1] = 101.01fp32;
+      ref_array[2] = 10101.0101fp32;
+
+      var state = State<Array<Fixed32>>("my array");
+      state.set(ref_array);
+    endfunction
+  )";
+
+  std::string const state_name{"my array"};
+  EXPECT_CALL(toolkit.observer(), Write(state_name, _, _));
+
+  ASSERT_TRUE(toolkit.Compile(ser_src));
+  ASSERT_TRUE(toolkit.Run());
+
+  static char const *deser_src = R"(
+    function main() : Array<Fixed32>
+      var retrieved_state = State<Array<Fixed32>>("my array");
+      return retrieved_state.get(Array<Fixed32>(0));
+    endfunction
+  )";
+
+  EXPECT_CALL(toolkit.observer(), Exists(state_name));
+  EXPECT_CALL(toolkit.observer(), Read(state_name, _, _));
+
+  ASSERT_TRUE(toolkit.Compile(deser_src));
+
+  Variant output;
+  ASSERT_TRUE(toolkit.Run(&output));
+  ASSERT_FALSE(output.IsPrimitive());
+  auto retval{output.Get<Ptr<IArray>>()};
+  ASSERT_TRUE(static_cast<bool>(retval));
+  ASSERT_EQ(int32_t{3}, retval->Count());
+
+  EXPECT_EQ(fetch::fixed_point::fp32_t("1.0"),
+            retval->PopFrontOne().Get<fetch::fixed_point::fp32_t>());
+  EXPECT_EQ(fetch::fixed_point::fp32_t("101.01"),
+            retval->PopFrontOne().Get<fetch::fixed_point::fp32_t>());
+  EXPECT_EQ(fetch::fixed_point::fp32_t("10101.0101"),
+            retval->PopFrontOne().Get<fetch::fixed_point::fp32_t>());
+}
+
+TEST_F(StateTests, test_serialisation_of_fixed_point64)
+{
+  static char const *ser_src = R"(
+    function main()
+      var ref_array = Array<Fixed64>(3);
+      ref_array[0] = 1.0fp64;
+      ref_array[1] = 101.01fp64;
+      ref_array[2] = 10101.0101fp64;
+
+      var state = State<Array<Fixed64>>("my array");
+      state.set(ref_array);
+    endfunction
+  )";
+
+  std::string const state_name{"my array"};
+  EXPECT_CALL(toolkit.observer(), Write(state_name, _, _));
+
+  ASSERT_TRUE(toolkit.Compile(ser_src));
+  ASSERT_TRUE(toolkit.Run());
+
+  static char const *deser_src = R"(
+    function main() : Array<Fixed64>
+      var retrieved_state = State<Array<Fixed64>>("my array");
+      return retrieved_state.get(Array<Fixed64>(0));
+    endfunction
+  )";
+  EXPECT_CALL(toolkit.observer(), Exists(state_name));
+  EXPECT_CALL(toolkit.observer(), Read(state_name, _, _));
+
+  ASSERT_TRUE(toolkit.Compile(deser_src));
+
+  Variant output;
+  ASSERT_TRUE(toolkit.Run(&output));
+  ASSERT_FALSE(output.IsPrimitive());
+  auto retval{output.Get<Ptr<IArray>>()};
+  ASSERT_TRUE(static_cast<bool>(retval));
+  ASSERT_EQ(int32_t{3}, retval->Count());
+  EXPECT_EQ(fetch::fixed_point::fp64_t("1.0"),
+            retval->PopFrontOne().Get<fetch::fixed_point::fp64_t>());
+  EXPECT_EQ(fetch::fixed_point::fp64_t("101.01"),
+            retval->PopFrontOne().Get<fetch::fixed_point::fp64_t>());
+  EXPECT_EQ(fetch::fixed_point::fp64_t("10101.0101"),
+            retval->PopFrontOne().Get<fetch::fixed_point::fp64_t>());
+}
+
+TEST_F(StateTests, test_serialisation_of_fixed_point128)
+{
+  static char const *ser_src = R"(
+    function main()
+      var ref_array = Array<Fixed128>(3);
+      ref_array[0] = 1.0fp128;
+      ref_array[1] = 101.01fp128;
+      ref_array[2] = 10101.0101fp128;
+
+      var state = State<Array<Fixed128>>("my array");
+      state.set(ref_array);
+    endfunction
+  )";
+
+  std::string const state_name{"my array"};
+  EXPECT_CALL(toolkit.observer(), Write(state_name, _, _));
+
+  ASSERT_TRUE(toolkit.Compile(ser_src));
+  ASSERT_TRUE(toolkit.Run());
+
+  static char const *deser_src = R"(
+    function main() : Array<Fixed128>
+      var retrieved_state = State<Array<Fixed128>>("my array");
+      return retrieved_state.get(Array<Fixed128>(0));
+    endfunction
+  )";
+  EXPECT_CALL(toolkit.observer(), Exists(state_name));
+  EXPECT_CALL(toolkit.observer(), Read(state_name, _, _));
+
+  ASSERT_TRUE(toolkit.Compile(deser_src));
+
+  Variant output;
+  ASSERT_TRUE(toolkit.Run(&output));
+  ASSERT_FALSE(output.IsPrimitive());
+  auto retval{output.Get<Ptr<IArray>>()};
+  ASSERT_TRUE(static_cast<bool>(retval));
+  ASSERT_EQ(int32_t{3}, retval->Count());
+  EXPECT_EQ(fetch::fixed_point::fp128_t("1.0"),
+            retval->PopFrontOne().Get<Ptr<fetch::vm::Fixed128>>()->data_);
+  EXPECT_EQ(fetch::fixed_point::fp128_t("101.01"),
+            retval->PopFrontOne().Get<Ptr<fetch::vm::Fixed128>>()->data_);
+  EXPECT_EQ(fetch::fixed_point::fp128_t("10101.0101"),
+            retval->PopFrontOne().Get<Ptr<fetch::vm::Fixed128>>()->data_);
 }
 
 }  // namespace

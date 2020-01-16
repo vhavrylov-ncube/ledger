@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@ public:
 
   template <typename LayerType, typename... Params>
   void Add(Params... params);
+
+  SizeType LayerCount() const;
 
   template <typename X, typename D>
   friend struct serializers::MapSerializer;
@@ -101,6 +103,12 @@ void Sequential<TensorType>::Add(Params... params)
     this->output_ = this->graph_ptr_->template AddNode<LayerType>("", {prev_layer_}, params...);
   }
   layer_count_++;
+}
+
+template <typename TensorType>
+fetch::math::SizeType Sequential<TensorType>::LayerCount() const
+{
+  return layer_count_;
 }
 
 }  // namespace model

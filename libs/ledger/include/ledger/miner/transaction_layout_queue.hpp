@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ public:
   using UnderlyingList    = std::list<TransactionLayout>;
   using Iterator          = UnderlyingList::iterator;
   using ConstIterator     = UnderlyingList::const_iterator;
+  using TxLayoutSet       = std::unordered_set<TransactionLayout>;
 
   // Construction / Destruction
   TransactionLayoutQueue()                               = default;
@@ -53,6 +54,7 @@ public:
   std::size_t      size() const;
   bool             empty() const;
   DigestSet const &digests() const;
+  TxLayoutSet      TxLayouts() const;
   /// @}
 
   /// @name Basic Operations

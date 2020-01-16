@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 
 #include "vectorise/fixed_point/fixed_point.hpp"
 #include "vectorise/fixed_point/type_traits.hpp"
+#include "vm/fixed.hpp"
 #include "vm/module.hpp"
 #include "vm_modules/core/type_convert.hpp"
 
@@ -58,6 +59,15 @@ fetch::math::meta::IfIsFixedPoint<T, Ptr<String>> ToString(VM *vm, T const &a)
 }
 
 template <typename T>
+Ptr<String> ToPtrString(VM *vm, Ptr<Fixed128> const &a)
+{
+  std::stringstream stream;
+  stream << a->data_;
+  Ptr<String> ret(new String(vm, stream.str()));
+  return ret;
+}
+
+template <typename T>
 bool ToBool(VM * /*vm*/, T const &a)
 {
   return static_cast<bool>(a);
@@ -75,11 +85,10 @@ void CreateToString(Module &module)
   module.CreateFreeFunction("toString", &ToString<uint32_t>);
   module.CreateFreeFunction("toString", &ToString<int64_t>);
   module.CreateFreeFunction("toString", &ToString<uint64_t>);
-  module.CreateFreeFunction("toString", &ToString<float_t>);
-  module.CreateFreeFunction("toString", &ToString<double_t>);
   module.CreateFreeFunction("toString", &ToString<bool>);
   module.CreateFreeFunction("toString", &ToString<fixed_point::fp32_t>);
   module.CreateFreeFunction("toString", &ToString<fixed_point::fp64_t>);
+  module.CreateFreeFunction("toString", &ToPtrString<Ptr<Fixed128>>);
 }
 
 void CreateToBool(Module &module)
@@ -89,8 +98,6 @@ void CreateToBool(Module &module)
   module.CreateFreeFunction("toBool", &ToBool<uint32_t>);
   module.CreateFreeFunction("toBool", &ToBool<int64_t>);
   module.CreateFreeFunction("toBool", &ToBool<uint64_t>);
-  module.CreateFreeFunction("toBool", &ToBool<float_t>);
-  module.CreateFreeFunction("toBool", &ToBool<double_t>);
 }
 
 }  // namespace vm_modules

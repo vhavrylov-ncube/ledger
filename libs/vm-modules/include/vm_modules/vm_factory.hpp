@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -44,17 +44,18 @@ public:
 
   enum Modules : uint64_t
   {
-    MOD_CORE    = (1ull << 0ull),
-    MOD_MATH    = (1ull << 1ull),
-    MOD_BITWISE = (1ull << 2ull),
-    MOD_ML      = (1ull << 3ull),
-    MOD_LEDGER  = (1ull << 4ull),
+    MOD_CORE            = (1ull << 0ull),
+    MOD_MATH            = (1ull << 1ull),
+    MOD_BITWISE         = (1ull << 2ull),
+    MOD_ML              = (1ull << 3ull),
+    MOD_LEDGER          = (1ull << 4ull),
+    MOD_EXPERIMENTAL_ML = (1ull << 5ull),
   };
 
   enum UseCases : uint64_t
   {
     USE_SMART_CONTRACTS = (MOD_CORE | MOD_MATH | MOD_ML | MOD_BITWISE | MOD_LEDGER),
-    USE_ALL             = (~uint64_t(0)),
+    USE_ALL             = (~(uint64_t(0))),
   };
 
   /**

@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 
 #include <utility>
 
-#include "dmlf/networkers/abstract_learner_networker.hpp"
-#include "dmlf/update.hpp"
+#include "dmlf/deprecated/abstract_learner_networker.hpp"
+#include "dmlf/deprecated/update.hpp"
 
 namespace fetch {
 namespace dmlf {
@@ -29,8 +29,8 @@ namespace collective_learning {
 template <class TensorType>
 class ClientAlgorithmController
 {
-  using UpdateType                    = fetch::dmlf::Update<TensorType>;
-  using MessageControllerInterfacePtr = std::shared_ptr<dmlf::AbstractLearnerNetworker>;
+  using UpdateType                    = fetch::dmlf::deprecated_Update<TensorType>;
+  using MessageControllerInterfacePtr = std::shared_ptr<dmlf::deprecated_AbstractLearnerNetworker>;
 
 public:
   explicit ClientAlgorithmController(MessageControllerInterfacePtr mci_ptr);

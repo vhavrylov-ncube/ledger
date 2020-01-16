@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -17,12 +17,16 @@
 //------------------------------------------------------------------------------
 
 #include "bloom_filter/bloom_filter.hpp"
+#include "chain/transaction_builder.hpp"
+#include "chain/transaction_layout.hpp"
 #include "chain/transaction_layout_rpc_serializers.hpp"
 #include "chain/transaction_rpc_serializers.hpp"
 #include "core/byte_array/byte_array.hpp"
 #include "core/containers/set_difference.hpp"
+#include "crypto/ecdsa.hpp"
 #include "ledger/chain/block.hpp"
 #include "ledger/chain/main_chain.hpp"
+#include "ledger/chain/time_travelogue.hpp"
 #include "ledger/testing/block_generator.hpp"
 
 #include "gtest/gtest.h"
@@ -34,30 +38,30 @@
 #include <sstream>
 #include <vector>
 
+namespace {
+
 using namespace fetch;
 
 using fetch::ledger::Block;
 using fetch::ledger::MainChain;
 using fetch::ledger::BlockStatus;
 using fetch::ledger::testing::BlockGenerator;
-using fetch::chain::Address;
 
 using Rng               = std::mt19937_64;
 using MainChainPtr      = std::unique_ptr<MainChain>;
 using BlockGeneratorPtr = std::unique_ptr<BlockGenerator>;
 using BlockPtr          = BlockGenerator::BlockPtr;
 
-static bool IsSameBlock(Block const &a, Block const &b)
+bool IsSameBlock(Block const &a, Block const &b)
 {
   return (a.hash == b.hash) && (a.previous_hash == b.previous_hash) &&
          (a.merkle_hash == b.merkle_hash) && (a.block_number == b.block_number) &&
-         (a.miner == b.miner) && (a.log2_num_lanes == b.log2_num_lanes) &&
-         (a.timestamp == b.timestamp) && (a.slices == b.slices) && (a.proof == b.proof) &&
-         (a.nonce == b.nonce);
+         (a.log2_num_lanes == b.log2_num_lanes) && (a.timestamp == b.timestamp) &&
+         (a.slices == b.slices);
 }
 
 template <typename Container, typename Value>
-static bool Contains(Container const &collection, Value const &value)
+bool Contains(Container const &collection, Value const &value)
 {
   return std::find(collection.begin(), collection.end(), value) != collection.end();
 }
@@ -104,17 +108,22 @@ std::string Hashes(std::vector<BlockPtr> const &v)
 
 class MainChainTests : public ::testing::TestWithParam<MainChain::Mode>
 {
+public:
+  static void SetUpTestCase()
+  {
+    fetch::crypto::mcl::details::MCLInitialiser();
+    fetch::chain::InitialiseTestConstants();
+  }
+
 protected:
   void SetUp() override
   {
-    fetch::crypto::mcl::details::MCLInitialiser();
-
     static constexpr std::size_t NUM_LANES  = 1;
     static constexpr std::size_t NUM_SLICES = 2;
 
     auto const main_chain_mode = GetParam();
 
-    chain_     = std::make_unique<MainChain>(false, main_chain_mode);
+    chain_     = std::make_unique<MainChain>(main_chain_mode);
     generator_ = std::make_unique<BlockGenerator>(NUM_LANES, NUM_SLICES);
   }
 
@@ -579,7 +588,6 @@ TEST_P(MainChainTests, AdditionOfBlocksOutOfOrder)
   // Try adding a non-sequential block (prev hash is itself)
   Block dummy;
   dummy.block_number = 2;
-  dummy.miner        = chain::Address{chain::Address::RawAddress{}};
   dummy.UpdateDigest();
   dummy.previous_hash = dummy.hash;
 
@@ -631,7 +639,7 @@ TEST_P(MainChainTests, AdditionOfBlocksWithABreak)
   ASSERT_EQ(chain_->GetHeaviestBlockHash(), main4->hash);
 }
 
-TEST_P(MainChainTests, CheckChainPreceeding)
+TEST_P(MainChainTests, CheckChainPreceding)
 {
   auto genesis = generator_->Generate();
   auto main1   = generator_->Generate(genesis);
@@ -649,24 +657,27 @@ TEST_P(MainChainTests, CheckChainPreceeding)
   ASSERT_EQ(chain_->GetHeaviestBlockHash(), main4->hash);
 
   {
-    auto const preceding = chain_->GetChainPreceding(main4->hash, 2);
-    ASSERT_EQ(preceding.size(), 2);
+    auto const preceding = chain_->GetChainPreceding(main4->hash, 3);
+    ASSERT_EQ(preceding.size(), 3);
     EXPECT_TRUE(IsSameBlock(*preceding[0], *main4));
     EXPECT_TRUE(IsSameBlock(*preceding[1], *main3));
+    EXPECT_TRUE(IsSameBlock(*preceding[2], *main2));
   }
 
   {
-    auto const preceding = chain_->GetChainPreceding(main3->hash, 2);
-    ASSERT_EQ(preceding.size(), 2);
+    auto const preceding = chain_->GetChainPreceding(main3->hash, 3);
+    ASSERT_EQ(preceding.size(), 3);
     EXPECT_TRUE(IsSameBlock(*preceding[0], *main3));
     EXPECT_TRUE(IsSameBlock(*preceding[1], *main2));
+    EXPECT_TRUE(IsSameBlock(*preceding[2], *main1));
   }
 
   {
-    auto const preceding = chain_->GetChainPreceding(main2->hash, 2);
-    ASSERT_EQ(preceding.size(), 2);
+    auto const preceding = chain_->GetChainPreceding(main2->hash, 3);
+    ASSERT_EQ(preceding.size(), 3);
     EXPECT_TRUE(IsSameBlock(*preceding[0], *main2));
     EXPECT_TRUE(IsSameBlock(*preceding[1], *main1));
+    EXPECT_TRUE(IsSameBlock(*preceding[2], *genesis));
   }
 
   {
@@ -677,10 +688,11 @@ TEST_P(MainChainTests, CheckChainPreceeding)
   }
 
   {
-    auto const heaviest = chain_->GetHeaviestChain(2);
-    ASSERT_EQ(heaviest.size(), 2);
+    auto const heaviest = chain_->GetHeaviestChain(3);
+    ASSERT_EQ(heaviest.size(), 3);
     EXPECT_TRUE(IsSameBlock(*heaviest[0], *main4));
     EXPECT_TRUE(IsSameBlock(*heaviest[1], *main3));
+    EXPECT_TRUE(IsSameBlock(*heaviest[2], *main2));
   }
 }
 
@@ -867,6 +879,96 @@ TEST_P(MainChainTests, CheckResolvedLooseWeight)
   ASSERT_EQ(chain_->GetBlock(main5->hash)->total_weight, main5->total_weight);
 }
 
+#define ToHex() ToHex().SubArray(0, 8)
+
+TEST_P(MainChainTests, CheckHeaviestChain)
+{
+  auto genesis     = generator_->Generate();
+  auto main_branch = Generate(generator_, genesis, 10);
+
+  for (auto const &block : main_branch)
+  {
+    ASSERT_EQ(ToString(chain_->AddBlock(*block)), ToString(BlockStatus::ADDED));
+    ASSERT_EQ(chain_->GetHeaviestBlockHash(), block->hash);
+    ASSERT_EQ(chain_->GetBlock(block->hash)->chain_label, 1);
+  }
+  auto        logue = chain_->TimeTravel(Digest{});
+  auto const &blogs = logue.blocks;
+  ASSERT_EQ(blogs.size(), main_branch.size() + 1);
+  ASSERT_EQ(blogs.front()->hash, genesis->hash);
+  for (size_t i{}; i < main_branch.size(); ++i)
+  {
+    ASSERT_EQ(blogs[i + 1]->hash, main_branch[i]->hash);
+    ASSERT_EQ(blogs[i + 1]->chain_label, 1);
+  }
+
+  auto side_branch = Generate(generator_, main_branch[5], 10);
+  for (std::size_t i{}; i < 3; ++i)
+  {
+    ASSERT_EQ(ToString(chain_->AddBlock(*side_branch[i])), ToString(BlockStatus::ADDED));
+    ASSERT_EQ(chain_->GetHeaviestBlockHash(), main_branch.back()->hash);
+    ASSERT_EQ(chain_->GetHeaviestBlock()->chain_label, 1);
+  }
+  ASSERT_EQ(ToString(chain_->AddBlock(*side_branch[3])), ToString(BlockStatus::ADDED));
+  for (std::size_t i = 4; i < side_branch.size(); ++i)
+  {
+    ASSERT_EQ(ToString(chain_->AddBlock(*side_branch[i])), ToString(BlockStatus::ADDED));
+    ASSERT_EQ(chain_->GetHeaviestBlockHash(), side_branch[i]->hash);
+    ASSERT_EQ(chain_->GetBlock(side_branch[i]->hash)->chain_label, 2);
+  }
+
+  logue = chain_->TimeTravel(Digest{});
+  ASSERT_EQ(blogs.size(), side_branch.size() + 7);
+  ASSERT_EQ(blogs.front()->hash, genesis->hash);
+  std::size_t i = 1;
+
+  for (; i < 7; ++i)
+  {
+    ASSERT_EQ(blogs[i]->hash, main_branch[i - 1]->hash);
+  }
+  for (; i < blogs.size(); ++i)
+  {
+    ASSERT_EQ(blogs[i]->hash, side_branch[i - 7]->hash);
+    ASSERT_EQ(blogs[i]->chain_label, 2);
+  }
+}
+
+TEST_P(MainChainTests, adding_block_with_duplicate_tx_fails)
+{
+  crypto::ECDSASigner signer;
+  chain::Address      signer_address{signer.identity()};
+
+  auto tx = chain::TransactionBuilder{}
+                .From(signer_address)
+                .TargetChainCode("some.kind.of.chain.code", BitVector{})
+                .Action("do.work")
+                .ValidUntil(100)
+                .ChargeRate(1)
+                .ChargeLimit(1)
+                .Signer(signer.identity())
+                .Seal()
+                .Sign(signer)
+                .Build();
+
+  auto genesis = generator_->Generate();
+  auto main1   = generator_->Generate(genesis);
+
+  main1->slices.push_back({chain::TransactionLayout(*tx, 1)});
+  main1->UpdateDigest();
+
+  auto main2 = generator_->Generate(main1);
+  main2->slices.push_back({chain::TransactionLayout(*tx, 1)});
+  main2->UpdateDigest();
+
+  ASSERT_EQ(BlockStatus::ADDED, chain_->AddBlock(*main1));
+  ASSERT_EQ(chain_->GetHeaviestBlockHash(), main1->hash);
+
+  ASSERT_EQ(BlockStatus::INVALID, chain_->AddBlock(*main2));
+  ASSERT_EQ(chain_->GetHeaviestBlockHash(), main1->hash);
+}
+
 INSTANTIATE_TEST_CASE_P(ParamBased, MainChainTests,
                         ::testing::Values(MainChain::Mode::CREATE_PERSISTENT_DB,
                                           MainChain::Mode::IN_MEMORY_DB), );
+
+}  // namespace

@@ -1,6 +1,6 @@
 ////------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ constexpr char const *LOGGING_NAME = "StateSentinelAdapter";
  * @param storage The reference to the storage engine
  * @param scope The reference to the scope
  */
-StateSentinelAdapter::StateSentinelAdapter(StorageInterface &storage, Identifier scope,
+StateSentinelAdapter::StateSentinelAdapter(StorageInterface &storage, ConstByteArray scope,
                                            BitVector const &shards)
   : StateAdapter(storage, std::move(scope), Mode::READ_WRITE)
   , shards_{shards}

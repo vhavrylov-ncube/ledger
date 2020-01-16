@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 //
 //------------------------------------------------------------------------------
 
-#include "math/tensor.hpp"
+#include "math/tensor/tensor.hpp"
 #include "ml/dataloaders/code2vec_context_loaders/context_loader.hpp"
 
 #include <cstdint>
@@ -29,11 +29,9 @@
 
 constexpr std::size_t MAX_CONTEXTS = 20;
 
-using DataType    = uint64_t;
-using TensorType  = fetch::math::Tensor<DataType>;
-using SizeType    = fetch::math::Tensor<DataType>::SizeType;
-using LabelType   = TensorType;
-using ContextType = TensorType;
+using DataType   = int64_t;
+using TensorType = fetch::math::Tensor<DataType>;
+using SizeType   = fetch::math::Tensor<DataType>::SizeType;
 
 std::string ReadFile(std::string const &path)
 {
@@ -49,7 +47,7 @@ int main(int ac, char **av)
     return 1;
   }
 
-  fetch::ml::dataloaders::C2VLoader<LabelType, ContextType> cloader(MAX_CONTEXTS);
+  fetch::ml::dataloaders::C2VLoader<TensorType> cloader(MAX_CONTEXTS);
 
   cloader.AddDataAsString(ReadFile(av[1]));
   std::cout << "Number of different function names: " << cloader.function_name_counter().size()

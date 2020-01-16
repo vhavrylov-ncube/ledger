@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -95,6 +95,11 @@ Deed::Weight SigneesFullWeight(Deed::Signees const &signees)
 }
 }  // namespace
 
+Deed::Operation const Deed::TRANSFER{"transfer"};
+Deed::Operation const Deed::STAKE{"stake"};
+Deed::Operation const Deed::AMEND{"amend"};
+Deed::Operation const Deed::EXECUTE{"execute"};
+
 Deed::Deed(Signees signees, OperationTresholds thresholds)
   : signees_{std::move(signees)}
   , operation_thresholds_{std::move(thresholds)}
@@ -154,7 +159,7 @@ bool Deed::IsSane() const
  */
 
 // TODO(EJF): Rework to use signatories
-bool Deed::Verify(chain::Transaction const &tx, DeedOperation const &operation) const
+bool Deed::Verify(chain::Transaction const &tx, Operation const &operation) const
 {
   auto const op = operation_thresholds_.find(operation);
   if (op == operation_thresholds_.end())
@@ -241,6 +246,26 @@ Deed::MandatorityMatrix Deed::InferMandatoryWeights() const
     }
   }
   return mandatory;
+}
+
+Deed::Signees const &Deed::signees() const
+{
+  return signees_;
+}
+
+Deed::OperationTresholds const &Deed::operation_thresholds() const
+{
+  return operation_thresholds_;
+}
+
+bool Deed::operator==(Deed const &right) const
+{
+  return signees_ == right.signees_ && operation_thresholds_ == right.operation_thresholds_;
+}
+
+bool Deed::operator!=(Deed const &right) const
+{
+  return !(*this == right);
 }
 
 }  // namespace ledger

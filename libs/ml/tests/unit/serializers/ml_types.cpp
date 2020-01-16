@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -17,13 +17,14 @@
 //------------------------------------------------------------------------------
 
 #include "core/serializers/main_serializer.hpp"
-#include "gtest/gtest.h"
 #include "ml/core/graph.hpp"
 #include "ml/layers/fully_connected.hpp"
 #include "ml/ops/placeholder.hpp"
 #include "ml/serializers/ml_types.hpp"
 #include "ml/utilities/graph_builder.hpp"
 #include "test_types.hpp"
+
+#include "gtest/gtest.h"
 
 namespace fetch {
 namespace ml {
@@ -84,7 +85,7 @@ TYPED_TEST(SerializersTestNoInt, serialize_graph_saveable_params)
   using GraphType  = typename fetch::ml::Graph<TensorType>;
 
   fetch::ml::RegularisationType regulariser = fetch::ml::RegularisationType::L1;
-  DataType                      reg_rate{0.01f};
+  auto                          reg_rate    = fetch::math::Type<DataType>("0.01");
 
   // Prepare graph with fairly random architecture
   auto g = std::make_shared<GraphType>();
@@ -150,7 +151,7 @@ TYPED_TEST(SerializersTestNoInt, serialize_graph_saveable_params)
   auto grads = g->GetGradients();
   for (auto &grad : grads)
   {
-    grad *= static_cast<DataType>(-0.1);
+    grad *= fetch::math::Type<DataType>("-0.1");
   }
   g->ApplyGradients(grads);
 
@@ -161,7 +162,7 @@ TYPED_TEST(SerializersTestNoInt, serialize_graph_saveable_params)
   auto grads2 = g2->GetGradients();
   for (auto &grad : grads2)
   {
-    grad *= static_cast<DataType>(-0.1);
+    grad *= fetch::math::Type<DataType>("-0.1");
   }
   g2->ApplyGradients(grads2);
 

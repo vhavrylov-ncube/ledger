@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -22,7 +22,9 @@
 #include "ledger/chaincode/chain_code_cache.hpp"
 #include "ledger/chaincode/token_contract.hpp"
 #include "ledger/executor_interface.hpp"
+#include "ledger/fees/fee_manager.hpp"
 #include "ledger/storage_unit/storage_unit_interface.hpp"
+#include "ledger/transaction_validator.hpp"
 #include "telemetry/telemetry.hpp"
 
 #include <cstdint>
@@ -69,7 +71,6 @@ private:
   bool ValidationChecks(Result &result);
   bool ExecuteTransactionContract(Result &result);
   bool ProcessTransfers(Result &result);
-  void DeductFees(Result &result);
 
   /// @name Resources
   /// @{
@@ -86,14 +87,16 @@ private:
   LaneIndex               log2_num_lanes_{0};
   TransactionPtr          current_tx_{};
   CachedStorageAdapterPtr storage_cache_;
+  TransactionValidator    tx_validator_;
   /// @}
+
+  FeeManager fee_manager_;
 
   telemetry::HistogramPtr overall_duration_;
   telemetry::HistogramPtr tx_retrieve_duration_;
   telemetry::HistogramPtr validation_checks_duration_;
   telemetry::HistogramPtr contract_execution_duration_;
   telemetry::HistogramPtr transfers_duration_;
-  telemetry::HistogramPtr deduct_fees_duration_;
   telemetry::HistogramPtr settle_fees_duration_;
 };
 

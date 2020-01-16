@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -73,7 +73,11 @@
 #include "ml/ops/loss_functions/mean_square_error_loss.hpp"
 #include "ml/ops/loss_functions/softmax_cross_entropy_loss.hpp"
 
+// metrics
+#include "ml/ops/metrics/categorical_accuracy.hpp"
+
 // layers
+#include "gtest/gtest.h"
 #include "ml/layers/PRelu.hpp"
 #include "ml/layers/convolution_1d.hpp"
 #include "ml/layers/convolution_2d.hpp"
@@ -83,8 +87,6 @@
 #include "ml/layers/scaled_dot_product_attention.hpp"
 #include "ml/layers/self_attention_encoder.hpp"
 #include "ml/layers/skip_gram.hpp"
-
-#include "gtest/gtest.h"
 
 namespace fetch {
 namespace ml {
@@ -109,7 +111,7 @@ void ComparePrediction(GraphPtrType g, GraphPtrType g2, std::string node_name)
   using DataType         = typename TensorType::Type;
   TensorType prediction  = g->Evaluate(node_name);
   TensorType prediction2 = g2->Evaluate(node_name);
-  EXPECT_TRUE(prediction.AllClose(prediction2, static_cast<DataType>(0), static_cast<DataType>(0)));
+  EXPECT_TRUE(prediction.AllClose(prediction2, DataType{0}, DataType{0}));
 }
 
 TYPED_TEST(GraphRebuildTest, graph_rebuild_every_op)
@@ -129,7 +131,7 @@ TYPED_TEST(GraphRebuildTest, graph_rebuild_every_op)
   TensorType data_logits = TensorType::FromString(R"(0.2 , 0.2 , 0.2, 0.2 , 0.1 , 0.1)");
   TensorType data_embed({5, 5});
   TensorType query_data = TensorType({12, 25, 4});
-  query_data.Fill(static_cast<DataType>(0));
+  query_data.Fill(DataType{0});
   TensorType key_data   = query_data;
   TensorType value_data = query_data;
   TensorType mask_data  = TensorType({25, 25, 4});
@@ -175,7 +177,7 @@ TYPED_TEST(GraphRebuildTest, graph_rebuild_every_op)
   std::string flatten      = AddOp<ops::Flatten<TensorType>>(g, {input_1});
   std::string layernorm_op = AddOp<ops::LayerNorm<TensorType>>(g, {input_1});
   std::string log          = AddOp<ops::Log<TensorType>>(g, {input_1});
-  std::string maskfill     = AddOp<ops::MaskFill<TensorType>>(g, {input_1, input_1}, DataType(0));
+  std::string maskfill     = AddOp<ops::MaskFill<TensorType>>(g, {input_1, input_1}, DataType{0});
   std::string matmul      = AddOp<ops::MatrixMultiply<TensorType>>(g, {input_1, input_1_transpose});
   std::string maxpool     = AddOp<ops::MaxPool<TensorType>>(g, {input_3d}, 1, 1);
   std::string maxpool1d   = AddOp<ops::MaxPool1D<TensorType>>(g, {input_3d}, 1, 1);
@@ -196,14 +198,15 @@ TYPED_TEST(GraphRebuildTest, graph_rebuild_every_op)
   std::string weights     = AddOp<ops::Weights<TensorType>>(g, {});
 
   // activations
-  std::string dropout    = AddOp<ops::Dropout<TensorType>>(g, {input_1}, DataType(0.9));
-  std::string elu        = AddOp<ops::Elu<TensorType>>(g, {input_1}, DataType(0.9));
-  std::string gelu       = AddOp<ops::Gelu<TensorType>>(g, {input_1});
+  std::string dropout =
+      AddOp<ops::Dropout<TensorType>>(g, {input_1}, fetch::math::Type<DataType>("0.9"));
+  std::string elu  = AddOp<ops::Elu<TensorType>>(g, {input_1}, fetch::math::Type<DataType>("0.9"));
+  std::string gelu = AddOp<ops::Gelu<TensorType>>(g, {input_1});
   std::string leakyrelu  = AddOp<ops::LeakyRelu<TensorType>>(g, {input_1});
   std::string logsigmoid = AddOp<ops::LogSigmoid<TensorType>>(g, {input_1});
   std::string logsoftmax = AddOp<ops::LogSoftmax<TensorType>>(g, {input_1});
   std::string randomisedrelu =
-      AddOp<ops::RandomisedRelu<TensorType>>(g, {input_1}, DataType(0), DataType(1));
+      AddOp<ops::RandomisedRelu<TensorType>>(g, {input_1}, DataType{0}, DataType{1});
   std::string relu    = AddOp<ops::Relu<TensorType>>(g, {input_1});
   std::string sigmoid = AddOp<ops::Sigmoid<TensorType>>(g, {input_1});
   std::string softmax = AddOp<ops::Softmax<TensorType>>(g, {input_1});
@@ -212,6 +215,10 @@ TYPED_TEST(GraphRebuildTest, graph_rebuild_every_op)
   std::string cel  = AddOp<ops::CrossEntropyLoss<TensorType>>(g, {input_logits, input_binary});
   std::string mse  = AddOp<ops::MeanSquareErrorLoss<TensorType>>(g, {input_1, input_2});
   std::string scel = AddOp<ops::SoftmaxCrossEntropyLoss<TensorType>>(
+      g, {input_logits_transpose, input_binary_transpose});
+
+  // Metrics
+  std::string acc = AddOp<ops::CategoricalAccuracy<TensorType>>(
       g, {input_logits_transpose, input_binary_transpose});
 
   // Layers
@@ -350,6 +357,9 @@ TYPED_TEST(GraphRebuildTest, graph_rebuild_every_op)
   ComparePrediction<GraphPtrType, TensorType>(g, g2, cel);
   ComparePrediction<GraphPtrType, TensorType>(g, g2, mse);
   ComparePrediction<GraphPtrType, TensorType>(g, g2, scel);
+
+  // Metrics
+  ComparePrediction<GraphPtrType, TensorType>(g, g2, acc);
 
   // Layers
   ComparePrediction<GraphPtrType, TensorType>(g, g2, layer_layernorm);

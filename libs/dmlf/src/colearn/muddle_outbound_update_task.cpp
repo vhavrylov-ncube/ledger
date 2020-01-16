@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -28,10 +28,10 @@ namespace colearn {
 
 MuddleOutboundUpdateTask::ExitState MuddleOutboundUpdateTask::run()
 {
-  FETCH_LOG_INFO(LOGGING_NAME, "Sending update to ", target_);
-  auto prom = client_->CallSpecificAddress(
-      fetch::byte_array::FromBase64(byte_array::ConstByteArray(target_)), RPC_COLEARN,
-      ColearnProtocol::RPC_COLEARN_UPDATE, type_name_, update_, proportion_, random_factor_);
+  FETCH_LOG_INFO(LOGGING_NAME, "Sending update to ", fetch::byte_array::ToBase64(target_));
+  auto prom =
+      client_->CallSpecificAddress(target_, RPC_COLEARN, ColearnProtocol::RPC_COLEARN_UPDATE,
+                                   type_name_, update_, proportion_, random_factor_);
   prom->Wait();
   return ExitState::COMPLETE;
 }

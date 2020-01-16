@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@
 
 #include "math/meta/math_type_traits.hpp"
 #include "math/standard_functions/exp.hpp"
+#include "vm/fixed.hpp"
 #include "vm/module.hpp"
+#include "vm/vm.hpp"
 #include "vm_modules/math/exp.hpp"
 
 #include <cmath>
@@ -39,14 +41,22 @@ fetch::math::meta::IfIsMath<T, T> Exp(VM * /*vm*/, T const &a)
   return x;
 }
 
+template <typename T>
+IfIsPtrFixed128<T, Ptr<T>> ExpPtr(VM *vm, Ptr<T> const &a)
+{
+  fixed_point::fp128_t x = a->data_;
+  fetch::math::Exp(x, x);
+  return Ptr<Fixed128>(new Fixed128(vm, x));
+}
+
 }  // namespace
 
-void BindExp(Module &module)
+void BindExp(Module &module, bool const /*enable_experimental*/)
 {
-  module.CreateFreeFunction("exp", &Exp<float_t>);
-  module.CreateFreeFunction("exp", &Exp<double_t>);
-  module.CreateFreeFunction("exp", &Exp<fixed_point::fp32_t>);
-  module.CreateFreeFunction("exp", &Exp<fixed_point::fp64_t>);
+  // charge estimates based on benchmarking in math/benchmark
+  module.CreateFreeFunction("exp", &Exp<fixed_point::fp32_t>, ChargeAmount{6});
+  module.CreateFreeFunction("exp", &Exp<fixed_point::fp64_t>, ChargeAmount{8});
+  module.CreateFreeFunction("exp", &ExpPtr<Fixed128>, ChargeAmount{12});
 }
 
 }  // namespace math

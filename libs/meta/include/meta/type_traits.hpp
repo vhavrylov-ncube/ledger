@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -99,6 +99,9 @@ static constexpr bool IsPOD = type_util::SatisfiesAllV<C, std::is_trivial, std::
 
 template <typename T>
 constexpr bool IsAny8BitInteger = std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+
+template <typename T>
+constexpr bool IsNotAny8BitInteger = !IsAny8BitInteger<T>;
 
 template <typename T>
 using Decay = std::decay_t<T>;

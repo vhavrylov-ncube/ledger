@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include "http/request.hpp"
 #include "logging/logging.hpp"
 
+#include <iostream>
 #include <utility>
 
 namespace fetch {
@@ -105,6 +106,12 @@ std::string HTTPConnectionManager::GetAddress(HandleType client)
   }
 
   return "0.0.0.0";
+}
+
+bool HTTPConnectionManager::has_connections() const
+{
+  FETCH_LOCK(clients_mutex_);
+  return !clients_.empty();
 }
 
 }  // namespace http

@@ -5,6 +5,8 @@ import datetime
 import glob
 import shutil
 import subprocess
+import sys
+from pathlib import Path
 
 from fetch.cluster.instance import ConstellationInstance, DmlfEtchInstance
 from fetch.cluster.utils import output, verify_file
@@ -12,9 +14,11 @@ from fetch.cluster.chain import ChainSyncTesting
 
 from fetchai.ledger.api.common import ApiEndpoint
 from fetchai.ledger.api import LedgerApi
-from fetchai.ledger.crypto import Entity
-from fetchai.ledger.genesis import *
+from fetchai.ledger.crypto import Entity, Address
 from fetch.cluster.chain import ChainSyncTesting
+
+TOTAL_SUPPLY_FET = 1152997575
+TEN_ZERO = 10000000000
 
 
 class TestCase(object):
@@ -83,6 +87,12 @@ class ConstellationTestCase(TestCase):
         self._watchdog = None
         self._creation_time = time.perf_counter()
         self._block_interval = 1000
+        self._genesis_file_location = ""
+
+        # In order for the tests to have tokens, allocate
+        # a benefactor address enough at genesis
+        self._benefactor_entity = Entity()
+        self._benefactor_address = Address(self._benefactor_entity)
 
         # Variables related to temporary pos mode
         self._pos_mode = False
@@ -154,6 +164,10 @@ class ConstellationTestCase(TestCase):
 
         self._nodes.append(instance)
 
+        # Load in genesis file
+        if not self._pos_mode:
+            self.setup_genesis_benefactor(index)
+
     def connect_nodes(self, node_connections):
         for connect_from, connect_to in node_connections:
             self._nodes[connect_from].add_peer(self._nodes[connect_to])
@@ -170,9 +184,38 @@ class ConstellationTestCase(TestCase):
 
         time.sleep(1)
 
-    def setup_pos_for_nodes(self):
+    def setup_genesis_benefactor(self, index):
+        """
+            Note: this will set up a genesis file, which will be overwritten for the POS case, which
+            needs a more complex genesis file
+        """
 
-        nodes_identities = []
+        # Only do this once to avoid different genesis due to timestamp
+        if not self._genesis_file_location:
+
+            genesis = {
+                'version': 4,
+                'accounts': [{
+                    'address': str(self._benefactor_address),
+                    'balance': TOTAL_SUPPLY_FET,
+                    'stake': 0,
+                }],
+            }
+
+            self._genesis_file_location = os.path.abspath(
+                os.path.join(self._workspace, "genesis_file.json"))
+            with open(self._genesis_file_location, 'w') as genesis_file:
+                json.dump(genesis, genesis_file)
+
+        # Give all nodes this stake file
+        # for index in range(self._number_of_nodes):
+        shutil.copy(self._genesis_file_location, self._nodes[index].root)
+
+    def setup_pos_for_nodes(self):
+        DEFAULT_STAKE = 1000
+
+        genesis_accounts = []
+        genesis_stakers = []
 
         # First give each node that is mining a unique identity
         for index in range(self._number_of_nodes):
@@ -187,19 +230,51 @@ class ConstellationTestCase(TestCase):
                 print('Giving node the identity: {}'.format(
                     node._entity.public_key))
 
-            nodes_identities.append(
-                (node._entity, 100, 10000 if node.mining else 0))
+            if index == 0:
+                balance = TOTAL_SUPPLY_FET - \
+                    (self._number_of_nodes * DEFAULT_STAKE)
+            else:
+                balance = 0
 
-        genesis_file = GenesisFile(
-            nodes_identities, 20, 5, self._block_interval)
-        genesis_file_location = os.path.abspath(
+            genesis_accounts.append({
+                'address': str(Address(node._entity)),
+                'balance': balance,
+                'stake': DEFAULT_STAKE,
+            })
+            genesis_stakers.append({
+                'identity': node._entity.public_key,
+                'amount': DEFAULT_STAKE * TEN_ZERO,
+            })
+
+        # set benefactor to node1
+        self._benefactor_entity = self._nodes[0]._entity
+        self._benefactor_address = Address(self._benefactor_entity)
+
+        genesis = {
+            'version': 4,
+            'accounts': genesis_accounts,
+            'consensus': {
+                'aeonOffset': 100,
+                'aeonPeriodicity': 25,
+                'cabinetSize': 20,
+                'entropyRunahead': 2,
+                'minimumStake': DEFAULT_STAKE,
+                'startTime': int(time.time()) + 5,
+                'stakers': genesis_stakers,
+            }
+        }
+
+        # Force overwrite of POS case
+        self._genesis_file_location = os.path.abspath(
             os.path.join(self._workspace, "genesis_file.json"))
-        genesis_file.dump_to_file(genesis_file_location)
+        # genesis_file.dump_to_file(self._genesis_file_location)
+        with open(self._genesis_file_location, 'w') as genesis_file:
+            json.dump(genesis, genesis_file)
 
         # Give all nodes this stake file, plus append POS flag for when node starts
         for index in range(self._number_of_nodes):
-            shutil.copy(genesis_file_location, self._nodes[index].root)
-            self._nodes[index].append_to_cmd(["-pos", "-private-network", ])
+            shutil.copy(self._genesis_file_location, self._nodes[index].root)
+            self._nodes[index].append_to_cmd(["-pos", "-private-network"])
 
     def restart_node(self, index, remove_db=False):
         print('Restarting Node {}...'.format(index))

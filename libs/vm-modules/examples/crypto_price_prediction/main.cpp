@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 //
 //------------------------------------------------------------------------------
 
-#include "math/tensor.hpp"
+#include "math/tensor/tensor.hpp"
 #include "math/utilities/ReadCSV.hpp"
 #include "vm/module.hpp"
 #include "vm_modules/core/print.hpp"
 #include "vm_modules/core/system.hpp"
 #include "vm_modules/math/math.hpp"
 #include "vm_modules/math/read_csv.hpp"
-#include "vm_modules/math/tensor.hpp"
+#include "vm_modules/math/tensor/tensor.hpp"
 #include "vm_modules/ml/ml.hpp"
 
 #include <cstddef>
@@ -70,7 +70,8 @@ int main(int argc, char **argv)
   std::ifstream file(etch_filename, std::ios::binary);
   if (file.fail())
   {
-    throw std::runtime_error("Cannot open file " + etch_filename);
+    std::cout << "Cannot open file " << etch_filename << std::endl;
+    return -1;
   }
   std::ostringstream ss;
   ss << file.rdbuf();
@@ -81,11 +82,11 @@ int main(int argc, char **argv)
 
   fetch::vm_modules::System::Bind(*module);
 
-  fetch::vm_modules::math::BindMath(*module);
-  fetch::vm_modules::ml::BindML(*module);
+  fetch::vm_modules::math::BindMath(*module, true);
+  fetch::vm_modules::ml::BindML(*module, true);
 
   fetch::vm_modules::CreatePrint(*module);
-  fetch::vm_modules::math::BindReadCSV(*module);
+  fetch::vm_modules::math::BindReadCSV(*module, true);
 
   module->CreateFreeFunction("remove_leading_dimension", &remove_leading_dimension);
 
@@ -129,6 +130,9 @@ int main(int argc, char **argv)
     std::cout << "Function 'main' not found" << std::endl;
     return -2;
   }
+
+  // disable charge limit
+  vm.SetChargeLimit(0);
 
   // Setting VM up and running
   std::string        error;

@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -41,6 +41,9 @@ char const *ToString(ServiceIdentifier::Type type)
   case ServiceIdentifier::Type::DKG:
     text = "Dkg";
     break;
+  case ServiceIdentifier::Type::AGENTS:
+    text = "Agents";
+    break;
   case ServiceIdentifier::Type::LANE:
     text = "Lane";
     break;
@@ -70,6 +73,16 @@ std::string ServiceIdentifier::ToString() const
 bool ServiceIdentifier::operator==(ServiceIdentifier const &other) const
 {
   return (type_ == other.type_) && (instance_ == other.instance_);
+}
+
+bool ServiceIdentifier::operator<(ServiceIdentifier const &other) const
+{
+  if (type_ == other.type_)
+  {
+    return instance_ < other.instance_;
+  }
+
+  return type_ < other.type_;
 }
 
 }  // namespace shards

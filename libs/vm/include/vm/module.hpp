@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -94,7 +94,7 @@ public:
     {
       using ReturnType = typename meta::CallableTraits<Constructor>::ReturnType;
       using Params     = typename meta::CallableTraits<Constructor>::ArgsTupleType;
-      static_assert(IsPtr<ReturnType>::value, "Constructors must return a fetch::vm::Ptr");
+      static_assert(IsPtr<ReturnType>, "Constructors must return a fetch::vm::Ptr");
       static_assert(std::is_same<Params, std::tuple<VM *, TypeId>>::value,
                     "Invalid default constructor handler: argument types should be (VM*, TypeId)");
 
@@ -268,7 +268,7 @@ public:
       using Params      = typename Traits::ArgsTupleType;
       using EtchParams  = typename meta::Tuple<Params>::template DropInitial<2>::type;
       using ExtraParams = typename meta::Tuple<Params>::template TakeInitial<2>::type;
-      static_assert(IsPtr<ReturnType>::value, "Constructors must return a fetch::vm::Ptr");
+      static_assert(IsPtr<ReturnType>, "Constructors must return a fetch::vm::Ptr");
       static_assert(std::is_same<ExtraParams, std::tuple<VM *, TypeId>>::value,
                     "Invalid constructor handler: initial two arguments should be (VM*, TypeId)");
 
@@ -475,6 +475,16 @@ public:
     return deserialization_constructors_;
   }
 
+  void EnableTestAnnotations()
+  {
+    test_annotations_ = true;
+  }
+
+  bool IsUsingTestAnnotations() const
+  {
+    return test_annotations_;
+  }
+
 private:
   template <typename Estimator, typename Callable>
   void InternalCreateFreeFunction(std::string const &name, Callable callable,
@@ -517,7 +527,7 @@ private:
   void GetDetails(TypeInfoArray &type_info_array, TypeInfoMap &type_info_map,
                   RegisteredTypes &registered_types, FunctionInfoArray &function_info_array,
                   DeserializeConstructorMap &deserialization_constructors,
-                  CPPCopyConstructorMap &    cpp_copy_constructors)
+                  CPPCopyConstructorMap &    cpp_copy_constructors) const
   {
     type_info_array              = type_info_array_;
     type_info_map                = type_info_map_;
@@ -545,6 +555,7 @@ private:
   // of C++ objects as Etch objects
   CPPCopyConstructorMap cpp_copy_constructors_;
 
+  bool test_annotations_{false};
   friend class Compiler;
   friend class VM;
 };

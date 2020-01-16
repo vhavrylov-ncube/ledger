@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ using fetch::vm::Primitive;
 using fetch::vm::TypeId;
 using fetch::fixed_point::fp32_t;
 using fetch::fixed_point::fp64_t;
+using fetch::fixed_point::fp128_t;
 using namespace fetch::vm::TypeIds;
 
 class VariantSerialization : public ::testing::Test
@@ -49,19 +50,18 @@ public:
   Primitive         primitive;
   Ptr<Object>       object;
 
-  bool     bl   = true;
-  int8_t   i8   = -4;
-  uint8_t  ui8  = 4;
-  int16_t  i16  = -8;
-  uint16_t ui16 = 8;
-  int32_t  i32  = -16;
-  uint32_t ui32 = 16;
-  int64_t  i64  = -32;
-  uint64_t ui64 = 32;
-  float    ft32 = 64.321684f;
-  double   ft64 = -128.64321684;
-  fp32_t   fp32 = fetch::fixed_point::fp32_t::FromBase(i32);
-  fp64_t   fp64 = fetch::fixed_point::fp64_t::FromBase(i64);
+  bool     bl    = true;
+  int8_t   i8    = -4;
+  uint8_t  ui8   = 4;
+  int16_t  i16   = -8;
+  uint16_t ui16  = 8;
+  int32_t  i32   = -16;
+  uint32_t ui32  = 16;
+  int64_t  i64   = -32;
+  uint64_t ui64  = 32;
+  fp32_t   fp32  = fetch::fixed_point::fp32_t::FromBase(i32);
+  fp64_t   fp64  = fetch::fixed_point::fp64_t::FromBase(i64);
+  fp128_t  fp128 = fetch::fixed_point::fp128_t::FromBase(i64);
 
   std::string str{"I am a string"};
 
@@ -145,20 +145,6 @@ TEST_F(VariantSerialization, ui64_variant)
   primitive.Set(ui64);
   SerializeAs(UInt64);
   ASSERT_EQ(variant_out.Get<uint64_t>(), ui64);
-}
-
-TEST_F(VariantSerialization, ft32_variant)
-{
-  primitive.Set(ft32);
-  SerializeAs(Float32);
-  ASSERT_EQ(variant_out.Get<float>(), ft32);
-}
-
-TEST_F(VariantSerialization, ft64_variant)
-{
-  primitive.Set(ft64);
-  SerializeAs(Float64);
-  ASSERT_EQ(variant_out.Get<double>(), ft64);
 }
 
 TEST_F(VariantSerialization, fp32_variant)

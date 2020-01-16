@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ public:
   fetch::vm::Ptr<fetch::vm_modules::math::VMTensor> DeNormalise(
       fetch::vm::Ptr<fetch::vm_modules::math::VMTensor> const &input_tensor);
 
-  static void Bind(fetch::vm::Module &module);
+  static void Bind(fetch::vm::Module &module, bool enable_experimental);
 
   bool SerializeTo(serializers::MsgPackSerializer &buffer) override;
 

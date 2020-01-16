@@ -1,8 +1,7 @@
-import os
-import subprocess
 import fnmatch
 import json
-
+import os
+import subprocess
 from fetchai.ledger.crypto import Entity
 
 
@@ -22,7 +21,6 @@ class Instance(object):
 
     def stop(self, timeout=None):
         if self._process is not None:
-
             # terminate the process
             self._process.terminate()
             self._process.wait(timeout=timeout)
@@ -184,6 +182,8 @@ class ConstellationInstance(Instance):
 
         if self._slices:
             cmd += ['-slices', self._slices]
+
+        cmd += ["-genesis-file-location", "genesis_file.json"]
 
         if self._feature_flags:
             cmd += ['-experimental', ','.join(self._feature_flags)]

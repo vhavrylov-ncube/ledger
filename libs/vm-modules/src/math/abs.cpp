@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 
 #include "math/meta/math_type_traits.hpp"
 #include "math/standard_functions/abs.hpp"
+#include "vm/fixed.hpp"
 #include "vm/module.hpp"
 #include "vm/vm.hpp"
 #include "vm_modules/math/abs.hpp"
@@ -32,7 +33,6 @@ namespace vm_modules {
 namespace math {
 
 namespace {
-
 /**
  * method for taking the absolute of a value
  */
@@ -42,6 +42,14 @@ fetch::math::meta::IfIsMath<T, T> Abs(VM * /*vm*/, T const &a)
   T x;
   fetch::math::Abs(a, x);
   return x;
+}
+
+template <typename T>
+IfIsPtrFixed128<T, Ptr<T>> AbsPtr(VM *vm, Ptr<T> const &a)
+{
+  fixed_point::fp128_t x = a->data_;
+  fetch::math::Abs(x, x);
+  return Ptr<Fixed128>(new Fixed128(vm, x));
 }
 
 template <typename T, typename R = void>
@@ -76,23 +84,21 @@ meta::IfIsUnsignedInteger<T, T> IntegerAbs(VM * /*vm*/, T const &value)
 
 }  // namespace
 
-void BindAbs(Module &module)
+void BindAbs(Module &module, bool const /*enable_experimental*/)
 {
-  module.CreateFreeFunction("abs", &IntegerAbs<int8_t>);
-  module.CreateFreeFunction("abs", &IntegerAbs<int16_t>);
-  module.CreateFreeFunction("abs", &IntegerAbs<int32_t>);
-  module.CreateFreeFunction("abs", &IntegerAbs<int64_t>);
+  module.CreateFreeFunction("abs", &IntegerAbs<int8_t>, ChargeAmount{1});
+  module.CreateFreeFunction("abs", &IntegerAbs<int16_t>, ChargeAmount{1});
+  module.CreateFreeFunction("abs", &IntegerAbs<int32_t>, ChargeAmount{1});
+  module.CreateFreeFunction("abs", &IntegerAbs<int64_t>, ChargeAmount{1});
 
-  module.CreateFreeFunction("abs", &IntegerAbs<uint8_t>);
-  module.CreateFreeFunction("abs", &IntegerAbs<uint16_t>);
-  module.CreateFreeFunction("abs", &IntegerAbs<uint32_t>);
-  module.CreateFreeFunction("abs", &IntegerAbs<uint64_t>);
+  module.CreateFreeFunction("abs", &IntegerAbs<uint8_t>, ChargeAmount{1});
+  module.CreateFreeFunction("abs", &IntegerAbs<uint16_t>, ChargeAmount{1});
+  module.CreateFreeFunction("abs", &IntegerAbs<uint32_t>, ChargeAmount{1});
+  module.CreateFreeFunction("abs", &IntegerAbs<uint64_t>, ChargeAmount{1});
 
-  module.CreateFreeFunction("abs", &Abs<float_t>);
-  module.CreateFreeFunction("abs", &Abs<double_t>);
-
-  module.CreateFreeFunction("abs", &Abs<fixed_point::fp32_t>);
-  module.CreateFreeFunction("abs", &Abs<fixed_point::fp64_t>);
+  module.CreateFreeFunction("abs", &Abs<fixed_point::fp32_t>, ChargeAmount{6});
+  module.CreateFreeFunction("abs", &Abs<fixed_point::fp64_t>, ChargeAmount{8});
+  module.CreateFreeFunction("abs", &AbsPtr<Fixed128>, ChargeAmount{12});
 }
 
 }  // namespace math

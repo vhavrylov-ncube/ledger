@@ -82,6 +82,15 @@ macro (setup_compiler)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-warning-option -Wshadow")
   endif ()
 
+  # ensuring that Ninja produces color output
+  if (FETCH_FORCE_COLORED_OUTPUT)
+    if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+      add_compile_options(-fdiagnostics-color=always)
+    elseif (_is_clang_compiler)
+      add_compile_options(-fcolor-diagnostics)
+    endif ()
+  endif (FETCH_FORCE_COLORED_OUTPUT)
+
   if (FETCH_WARNINGS_AS_ERRORS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
   endif (FETCH_WARNINGS_AS_ERRORS)
@@ -183,6 +192,10 @@ macro (setup_compiler)
       )
   endif ()
 
+  if (FETCH_FIXEDPOINT_DEBUG_HEX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DFETCH_FIXEDPOINT_DEBUG_HEX")
+  endif ()
+
 endmacro (setup_compiler)
 
 function (conditionally_enable_lto)
@@ -227,6 +240,10 @@ function (configure_vendor_targets)
     include(CTest)
     enable_testing()
   endif (FETCH_ENABLE_TESTS)
+
+  # memu vendor library
+  add_library(vendor-memu INTERFACE)
+  target_include_directories(vendor-memu INTERFACE ${FETCH_ROOT_VENDOR_DIR}/memu)
 
   # asio vendor library
   add_library(vendor-asio INTERFACE)
@@ -300,6 +317,14 @@ function (configure_vendor_targets)
   set(UTF8_INSTALL OFF CACHE BOOL "Enable installation for UTF8-CPP" FORCE)
   set(UTF8_SAMPLES OFF CACHE BOOL "Enable building samples for UTF8-CPP" FORCE)
   add_subdirectory(${FETCH_ROOT_VENDOR_DIR}/utfcpp)
+
+  # noisec
+  set(USE_SODIUM OFF CACHE BOOL "Use Libsodium for crypto" FORCE)
+  set(EXTERNAL_OPENSSL vendor-openssl CACHE STRING "Use vendor-openssl in NoiseC" FORCE)
+  add_subdirectory(${FETCH_ROOT_VENDOR_DIR}/noisec)
+  add_library(vendor-noisec INTERFACE)
+  target_link_libraries(vendor-noisec INTERFACE noise_protocol)
+  target_include_directories(vendor-noisec INTERFACE ${FETCH_ROOT_VENDOR_DIR}/noisec/include)
 
 endfunction (configure_vendor_targets)
 

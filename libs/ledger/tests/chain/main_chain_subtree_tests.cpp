@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -50,9 +50,10 @@ protected:
 
   void SetUp() override
   {
+    fetch::crypto::mcl::details::MCLInitialiser();
     block_generator_.Reset();
 
-    chain_ = std::make_unique<MainChain>(false, MainChain::Mode::IN_MEMORY_DB);
+    chain_ = std::make_unique<MainChain>(MainChain::Mode::IN_MEMORY_DB);
   }
 
   BlockGenerator block_generator_{NUM_LANES, NUM_SLICES};

@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ MuddlePtr CreateMuddle(NetworkId const &network, ProverPtr certificate,
                        network::NetworkManager const &nm, std::string const &external_address)
 {
   // enable all message signing
-  return std::make_shared<Muddle>(network, certificate, nm, true, true, external_address);
+  return std::make_shared<Muddle>(network, certificate, nm, external_address);
 }
 
 MuddlePtr CreateMuddle(char const network[4], ProverPtr certificate,

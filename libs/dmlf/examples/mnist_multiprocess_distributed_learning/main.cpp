@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@
 #include "dmlf/collective_learning/client_algorithm.hpp"
 #include "dmlf/collective_learning/utilities/mnist_client_utilities.hpp"
 #include "dmlf/collective_learning/utilities/utilities.hpp"
-#include "dmlf/networkers/muddle_learner_networker.hpp"
+#include "dmlf/deprecated/muddle_learner_networker.hpp"
 #include "dmlf/simple_cycling_algorithm.hpp"
 #include "json/document.hpp"
-#include "math/tensor.hpp"
+#include "math/tensor/tensor.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -58,11 +58,19 @@ int main(int argc, char **argv)
       fetch::dmlf::collective_learning::utilities::ClientParamsFromJson<TensorType>(
           std::string(argv[1]), doc);
 
-  auto data_file      = doc["data"].As<std::string>();
-  auto labels_file    = doc["labels"].As<std::string>();
-  auto n_rounds       = doc["n_rounds"].As<SizeType>();
-  auto n_peers        = doc["n_peers"].As<SizeType>();
-  auto test_set_ratio = doc["test_set_ratio"].As<float>();
+  auto data_file   = doc["data"].As<std::string>();
+  auto labels_file = doc["labels"].As<std::string>();
+  auto n_rounds    = doc["n_rounds"].As<SizeType>();
+  auto n_peers     = doc["n_peers"].As<SizeType>();
+  auto test_set_ratio =
+      fetch::math::AsType<fetch::fixed_point::fp32_t>(doc["test_set_ratio"].As<float>());
+
+  // get the network config file
+  fetch::json::JSONDocument network_doc;
+  std::ifstream             network_config_file{networker_config};
+  std::string               text((std::istreambuf_iterator<char>(network_config_file)),
+                                 std::istreambuf_iterator<char>());
+  network_doc.Parse(text.c_str());
 
   /**
    * Prepare environment
@@ -73,9 +81,9 @@ int main(int argc, char **argv)
   std::shared_ptr<std::mutex> console_mutex_ptr = std::make_shared<std::mutex>();
 
   // Create networker and assign shuffle algorithm
-  auto networker =
-      std::make_shared<fetch::dmlf::MuddleLearnerNetworker>(networker_config, instance_number);
-  networker->Initialize<fetch::dmlf::Update<TensorType>>();
+  auto networker = std::make_shared<fetch::dmlf::deprecated_MuddleLearnerNetworker>(
+      network_doc, instance_number);
+  networker->Initialize<fetch::dmlf::deprecated_Update<TensorType>>();
   networker->SetShuffleAlgorithm(
       std::make_shared<fetch::dmlf::SimpleCyclingAlgorithm>(networker->GetPeerCount(), n_peers));
 

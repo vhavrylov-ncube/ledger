@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -39,6 +39,10 @@ public:
   using TokenAmount    = uint64_t;
   using BlockIndex     = uint64_t;
   using Counter        = uint64_t;
+
+  constexpr static uint64_t   MAXIMUM_TX_CHARGE_LIMIT    = 10000000000;
+  constexpr static BlockIndex MAXIMUM_TX_VALIDITY_PERIOD = 40000;
+  constexpr static BlockIndex DEFAULT_TX_VALIDITY_PERIOD = 1000;
 
   /**
    * Represents a single target and token about. The transaction format allows any number of
@@ -113,14 +117,13 @@ public:
 
   /// @name Charge Accessors
   /// @{
-  TokenAmount charge() const;
+  TokenAmount charge_rate() const;
   TokenAmount charge_limit() const;
   /// @}
 
   /// @name Contract Accessors
   /// @{
   ContractMode          contract_mode() const;
-  Address const &       contract_digest() const;
   Address const &       contract_address() const;
   ConstByteArray const &chain_code() const;
   ConstByteArray const &action() const;
@@ -147,10 +150,9 @@ private:
   Transfers      transfers_{};                               ///< The list of the transfers
   BlockIndex     valid_from_{0};                             ///< Min. block number before valid
   BlockIndex     valid_until_{0};                            ///< Max. block number before invalid
-  TokenAmount    charge_{0};                                 ///< The charge rate for the TX
+  TokenAmount    charge_rate_{0};                            ///< The charge rate for the TX
   TokenAmount    charge_limit_{0};                           ///< The maximum charge to be used
   ContractMode   contract_mode_{ContractMode::NOT_PRESENT};  ///< The payload being contained
-  Address        contract_digest_{};                         ///< The digest of the smart contract
   Address        contract_address_{};                        ///< The address of the smart contract
   ConstByteArray chain_code_{};                              ///< The name of the chain code
   BitVector      shard_mask_{};                              ///< Shard mask of addition depends

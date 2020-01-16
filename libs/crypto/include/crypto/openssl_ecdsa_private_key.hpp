@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -43,6 +43,8 @@ class ECDSAPrivateKey
 public:
   static constexpr eECDSAEncoding          binaryDataFormat = P_ECDSABinaryDataFormat;
   static constexpr point_conversion_form_t conversionForm   = P_ConversionForm;
+
+  using EcKeyPtr = SharedPointerType<const EC_KEY>;
 
   // using PublicKeyType = ECDSAPublicKey<binaryDataFormat, P_ECDSA_Curve_NID,
   // P_ConversionForm>;
@@ -111,7 +113,7 @@ public:
     return *this;
   }
 
-  SharedPointerType<const EC_KEY> key() const
+  EcKeyPtr key() const
   {
     return private_key_;
   }

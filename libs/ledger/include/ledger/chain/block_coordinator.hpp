@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 #include "core/synchronisation/protected.hpp"
 #include "ledger/chain/block.hpp"
 #include "ledger/chain/main_chain.hpp"
-#include "ledger/consensus/consensus.hpp"
+#include "ledger/consensus/consensus_interface.hpp"
 #include "ledger/dag/dag_interface.hpp"
 #include "ledger/upow/naive_synergetic_miner.hpp"
 #include "ledger/upow/synergetic_execution_manager_interface.hpp"
@@ -52,9 +52,6 @@ class Prover;
 }
 
 namespace ledger {
-namespace consensus {
-class ConsensusMinerInterface;
-}
 
 class TransactionStatusCache;
 class BlockPackerInterface;
@@ -121,7 +118,7 @@ class BlockSinkInterface;
  *                  │─ ─ ─ ─ ─ ─              │─ ─ ─ ─ ─ ─ ┘         │                  │
  *                  ▼                         ▼                      │                  │
  *        ┌──────────────────┐      ┌──────────────────┐             │                  │
- *        │ Post Exec. Block │      │   Proof Search   │             │                  │
+ *        │ Post Exec. Block │      │                  │             │                  │
  *        │    Validation    │      │                  │◀ ─          │                  │
  *        └──────────────────┘      └──────────────────┘   │         │                  │
  *                  │                         │                      │                  │
@@ -151,7 +148,7 @@ public:
   using ConstByteArray = byte_array::ConstByteArray;
   using DAGPtr         = std::shared_ptr<ledger::DAGInterface>;
   using ProverPtr      = std::shared_ptr<crypto::Prover>;
-  using ConsensusPtr   = std::shared_ptr<ledger::Consensus>;
+  using ConsensusPtr   = std::shared_ptr<ledger::ConsensusInterface>;
 
   enum class State
   {
@@ -174,7 +171,6 @@ public:
     NEW_SYNERGETIC_EXECUTION,
     EXECUTE_NEW_BLOCK,             ///< Schedule the execution of the new block
     WAIT_FOR_NEW_BLOCK_EXECUTION,  ///< Wait for the new block to be executed
-    PROOF_SEARCH,                  ///< New Block: Waiting until a hash can be found
     TRANSMIT_BLOCK,                ///< Transmit the new block to
 
     // Main loop
@@ -189,16 +185,11 @@ public:
   BlockCoordinator(MainChain &chain, DAGPtr dag, ExecutionManagerInterface &execution_manager,
                    StorageUnitInterface &storage_unit, BlockPackerInterface &packer,
                    BlockSinkInterface &block_sink, ProverPtr prover, uint32_t log2_num_lanes,
-                   std::size_t num_slices, std::size_t block_difficulty, ConsensusPtr consensus,
+                   std::size_t num_slices, ConsensusPtr consensus,
                    SynergeticExecMgrPtr synergetic_exec_manager);
   BlockCoordinator(BlockCoordinator const &) = delete;
   BlockCoordinator(BlockCoordinator &&)      = delete;
   ~BlockCoordinator()                        = default;
-
-  template <typename R, typename P>
-  void SetBlockPeriod(std::chrono::duration<R, P> const &period);
-  void EnableMining(bool enable = true);
-  void TriggerBlockGeneration();  // useful in tests
 
   std::weak_ptr<core::Runnable> GetWeakRunnable()
   {
@@ -241,6 +232,7 @@ public:
   }
 
   void Reset();
+  void ResetGenesis();
 
   // Operators
   BlockCoordinator &operator=(BlockCoordinator const &) = delete;
@@ -266,7 +258,6 @@ private:
   using Clock             = std::chrono::system_clock;
   using Timepoint         = Clock::time_point;
   using StateMachinePtr   = std::shared_ptr<StateMachine>;
-  using MinerPtr          = std::shared_ptr<consensus::ConsensusMinerInterface>;
   using TxDigestSetPtr    = std::unique_ptr<DigestSet>;
   using LastExecutedBlock = Protected<ConstByteArray>;
   using FutureTimepoint   = fetch::core::FutureTimepoint;
@@ -292,7 +283,6 @@ private:
   State OnNewSynergeticExecution();
   State OnExecuteNewBlock();
   State OnWaitForNewBlockExecution();
-  State OnProofSearch();
   State OnTransmitBlock();
   State OnReset();
   /// @}
@@ -301,7 +291,6 @@ private:
   bool            ScheduleNextBlock();
   bool            ScheduleBlock(Block const &block);
   ExecutionStatus QueryExecutorStatus();
-  void            UpdateNextBlockTime();
   void            RemoveBlock(MainChain::BlockHash const &hash);
 
   static char const *ToString(ExecutionStatus state);
@@ -316,7 +305,6 @@ private:
   BlockPackerInterface &     block_packer_;       ///< Ref to the block packer
   BlockSinkInterface &       block_sink_;         ///< Ref to the output sink interface
   PeriodicAction             periodic_print_;
-  MinerPtr                   miner_;
   MainChain::Blocks blocks_to_common_ancestor_;  ///< Partial vector of blocks from main chain HEAD
                                                  ///< to block coord. last executed block.
   /// @}
@@ -328,17 +316,12 @@ private:
 
   /// @name State Machine State
   /// @{
-  ProverPtr       certificate_;       ///< The miners identity
-  chain::Address  mining_address_;    ///< The miners address
-  StateMachinePtr state_machine_;     ///< The main state machine for this service
-  std::size_t     block_difficulty_;  ///< The number of leading zeros needed in the proof
+  ProverPtr       certificate_;     ///< The miners identity
+  chain::Address  mining_address_;  ///< The miners address
+  StateMachinePtr state_machine_;   ///< The main state machine for this service
   uint32_t        log2_num_lanes_{};
   std::size_t     num_lanes_{1u << log2_num_lanes_};  ///< The current number of lanes
   std::size_t     num_slices_;                        ///< The current number of slices
-  Flag            mining_{false};           ///< Flag to signal if this node generating blocks
-  Flag            mining_enabled_{false};   ///< Short term signal to toggle on and off
-  BlockPeriod     block_period_{};          ///< The desired period before a block is generated
-  Timepoint       next_block_time_;         ///< The next point that a block should be generated
   BlockPtr        current_block_{};         ///< The pointer to the current block (read only)
   NextBlockPtr    next_block_{};            ///< The next block being created (read / write)
   TxDigestSetPtr  pending_txs_{};           ///< The list of pending txs that are being waited on
@@ -346,6 +329,7 @@ private:
   PeriodicAction  exec_wait_periodic_;      ///< Periodic print for execution
   PeriodicAction  syncing_periodic_;        ///< Periodic print for synchronisation
   Timepoint       start_waiting_for_tx_{};  ///< The time at which we started waiting for txs
+  Timepoint       start_block_packing_{};   ///< The time at which we started block packing
   /// Timeout when waiting for transactions
   DeadlineTimer wait_for_tx_timeout_{"bc:deadline"};
   /// Time to wait before asking peers for any missing txs
@@ -374,7 +358,6 @@ private:
   telemetry::CounterPtr         new_syn_state_count_;
   telemetry::CounterPtr         new_exec_state_count_;
   telemetry::CounterPtr         new_wait_exec_state_count_;
-  telemetry::CounterPtr         proof_search_state_count_;
   telemetry::CounterPtr         transmit_state_count_;
   telemetry::CounterPtr         reset_state_count_;
   telemetry::CounterPtr         executed_block_count_;
@@ -382,25 +365,18 @@ private:
   telemetry::CounterPtr         executed_tx_count_;
   telemetry::CounterPtr         request_tx_count_;
   telemetry::CounterPtr         unable_to_find_tx_count_;
+  telemetry::CounterPtr         blocks_minted_;
+  telemetry::CounterPtr         consensus_update_failure_total_;
   telemetry::HistogramPtr       tx_sync_times_;
   telemetry::GaugePtr<uint64_t> current_block_num_;
   telemetry::GaugePtr<uint64_t> next_block_num_;
   telemetry::GaugePtr<uint64_t> block_hash_;
+  telemetry::GaugePtr<uint64_t> total_time_to_create_block_;
+  telemetry::GaugePtr<uint64_t> current_block_weight_;
+  telemetry::GaugePtr<uint64_t> last_block_interval_s_;
+  telemetry::GaugePtr<uint64_t> current_block_coord_state_;
   /// @}
 };
-
-template <typename R, typename P>
-void BlockCoordinator::SetBlockPeriod(std::chrono::duration<R, P> const &period)
-{
-  using std::chrono::duration_cast;
-
-  // convert and store
-  block_period_ = duration_cast<BlockPeriod>(period);
-  UpdateNextBlockTime();
-
-  // signal that we are mining
-  mining_ = true;
-}
 
 }  // namespace ledger
 }  // namespace fetch

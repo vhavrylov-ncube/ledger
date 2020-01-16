@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -17,7 +17,8 @@
 //------------------------------------------------------------------------------
 
 #include "ml/dataloaders/tensor_dataloader.hpp"
-#include "ml/model/dnn_classifier.hpp"
+#include "ml/model/sequential.hpp"
+#include "ml/ops/activation.hpp"
 #include "ml/optimisation/types.hpp"
 #include "ml/utilities/mnist_utilities.hpp"
 
@@ -26,12 +27,12 @@
 using namespace fetch::ml::model;
 using namespace fetch::ml::optimisers;
 
-using DataType   = float;
+using DataType   = fetch::fixed_point::FixedPoint<32, 32>;
 using TensorType = fetch::math::Tensor<DataType>;
 using SizeType   = fetch::math::SizeType;
 
-using ModelType      = typename fetch::ml::model::DNNClassifier<TensorType>;
-using DataLoaderType = typename fetch::ml::dataloaders::TensorDataLoader<TensorType, TensorType>;
+using ModelType      = typename fetch::ml::model::Sequential<TensorType>;
+using DataLoaderType = typename fetch::ml::dataloaders::TensorDataLoader<TensorType>;
 using OptimiserType  = fetch::ml::OptimiserType;
 
 int main(int ac, char **av)
@@ -49,8 +50,8 @@ int main(int ac, char **av)
   ModelConfig<DataType> model_config;
   model_config.learning_rate_param.mode =
       fetch::ml::optimisers::LearningRateParam<DataType>::LearningRateDecay::EXPONENTIAL;
-  model_config.learning_rate_param.starting_learning_rate = static_cast<DataType>(0.001);
-  model_config.learning_rate_param.exponential_decay_rate = static_cast<DataType>(0.99);
+  model_config.learning_rate_param.starting_learning_rate = fetch::math::Type<DataType>("0.001");
+  model_config.learning_rate_param.exponential_decay_rate = fetch::math::Type<DataType>("0.99");
   model_config.batch_size                                 = 64;  // minibatch training size
   model_config.subset_size         = 1000;  // train on 1000 samples then run tests/save graph
   model_config.early_stopping      = true;  // stop early if no improvement
@@ -66,10 +67,17 @@ int main(int ac, char **av)
 
   auto data_loader_ptr = std::make_unique<DataLoaderType>();
   data_loader_ptr->AddData({mnist_images}, mnist_labels);
-  data_loader_ptr->SetTestRatio(0.2f);
+  data_loader_ptr->SetTestRatio(fetch::fixed_point::fp32_t{"0.2"});
 
   // setup model and pass dataloader
-  ModelType model(model_config, {784, 100, 20, 10});
+  ModelType model(model_config);
+  model.Add<fetch::ml::layers::FullyConnected<TensorType>>(
+      784, 100, fetch::ml::details::ActivationType::RELU);
+  model.Add<fetch::ml::layers::FullyConnected<TensorType>>(
+      100, 20, fetch::ml::details::ActivationType::RELU);
+  model.Add<fetch::ml::layers::FullyConnected<TensorType>>(
+      20, 10, fetch::ml::details::ActivationType::RELU);
+
   model.SetDataloader(std::move(data_loader_ptr));
   model.Compile(OptimiserType::ADAM);
 

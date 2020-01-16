@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 #include "ml/ops/activations/gelu.hpp"
 #include "ml/serializers/ml_types.hpp"
 #include "test_types.hpp"
-#include "vectorise/fixed_point/fixed_point.hpp"
 #include <vector>
 
 namespace fetch {
@@ -53,7 +52,7 @@ TYPED_TEST(GeluTest, forward_test_3d)
   // test correct values
   ASSERT_TRUE(prediction.AllClose(
       gt, fetch::math::function_tolerance<DataType>(),
-      static_cast<DataType>(2.8) * fetch::math::function_tolerance<DataType>()));
+      fetch::math::Type<DataType>("2.8") * fetch::math::function_tolerance<DataType>()));
 
   // gelu can overflow for some fixed point types for these data
   fetch::math::state_clear<DataType>();
@@ -78,9 +77,8 @@ TYPED_TEST(GeluTest, backward_3d_test)
       op.Backward({std::make_shared<const TensorType>(data)}, error_signal);
 
   // test correct values
-  ASSERT_TRUE(prediction[0].AllClose(
-      gt, fetch::math::function_tolerance<DataType>(),
-      static_cast<DataType>(100) * fetch::math::function_tolerance<DataType>()));
+  ASSERT_TRUE(prediction[0].AllClose(gt, fetch::math::function_tolerance<DataType>(),
+                                     DataType{100} * fetch::math::function_tolerance<DataType>()));
 
   // gelu can overflow for some fixed point types for these data
   fetch::math::state_clear<DataType>();
@@ -127,8 +125,7 @@ TYPED_TEST(GeluTest, saveparams_test)
   new_op.Forward(VecTensorType({std::make_shared<const TensorType>(data)}), new_prediction);
 
   // test correct values
-  EXPECT_TRUE(
-      new_prediction.AllClose(prediction, static_cast<DataType>(0), static_cast<DataType>(0)));
+  EXPECT_TRUE(new_prediction.AllClose(prediction, DataType{0}, DataType{0}));
 
   // gelu can overflow for some fixed point types for these data
   fetch::math::state_clear<DataType>();

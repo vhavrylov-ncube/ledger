@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -17,9 +17,13 @@
 //
 //------------------------------------------------------------------------------
 
+#include "math/base_types.hpp"
 #include "ml/meta/ml_type_traits.hpp"
+#include "ml/regularisers/reg_types.hpp"
 
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace fetch {
 namespace ml {
@@ -37,15 +41,30 @@ struct OpsSaveableParams
   bool              is_training = true;
 };
 
-////////////////////////////
-/// FORWARD DECLARATIONS ///
-////////////////////////////
+template <typename TensorType>
+struct OpDataHolderSaveableParams : public OpsSaveableParams
+{
+  fetch::ml::OpType           op_type = OpType::OP_DATAHOLDER;
+  std::shared_ptr<TensorType> data;
+};
 
 template <typename TensorType>
-struct OpWeightsSaveableParams;
+struct OpVariableSaveableParams : public OpDataHolderSaveableParams<TensorType>
+{
+  using DataType                      = typename TensorType::Type;
+  fetch::ml::OpType           op_type = OpType::OP_PLACEHOLDER;
+  std::shared_ptr<TensorType> data;
+  std::shared_ptr<TensorType> gradient_accumulation;
+  RegularisationType          regularisation_type = RegularisationType::NONE;
+  DataType                    regularisation_rate = fetch::math::numeric_max<DataType>();
+  bool                        value_frozen        = false;
+};
 
-template <typename TensorType>
-struct OpVariableSaveableParams;
+template <class TensorType>
+struct OpWeightsSaveableParams : public OpVariableSaveableParams<TensorType>
+{
+  fetch::ml::OpType op_type = OpType::OP_WEIGHTS;
+};
 
 template <typename TensorType>
 struct NodeSaveableParams
@@ -309,6 +328,22 @@ struct OpSliceSaveableParams : public OpsSaveableParams
 };
 
 /**
+ * Saveable parameters for StridedSlice op
+ * @tparam TensorType
+ */
+template <typename TensorType>
+struct OpStridedSliceSaveableParams : public OpsSaveableParams
+{
+  using SizeType = typename TensorType::SizeType;
+
+  std::vector<SizeType> begins;
+  std::vector<SizeType> ends;
+  std::vector<SizeType> strides;
+
+  fetch::ml::OpType op_type = OpType::OP_STRIDED_SLICE;
+};
+
+/**
  * Saveable parameters for Squeeze op
  * @tparam TensorType
  */
@@ -466,6 +501,18 @@ struct OpMeanSquareErrorSaveableParams : public OpsSaveableParams
 };
 
 /**
+ * Saveable parameters for Categorical Accuracy op
+ * @tparam TensorType
+ */
+template <typename TensorType>
+struct OpCategoricalAccuracySaveableParams : public OpsSaveableParams
+{
+  using DataType            = typename TensorType::Type;
+  fetch::ml::OpType op_type = OpType::METRIC_CATEGORICAL_ACCURACY;
+  TensorType        weightings;
+};
+
+/**
  * Saveable parameters for Maximum op
  * @tparam TensorType
  */
@@ -524,13 +571,6 @@ struct LayerMultiHeadSaveableParams : public SubGraphSaveableParams<TensorType>
 };
 
 template <typename TensorType>
-struct OpDataHolderSaveableParams : public OpsSaveableParams
-{
-  fetch::ml::OpType           op_type = OpType::OP_DATAHOLDER;
-  std::shared_ptr<TensorType> data;
-};
-
-template <typename TensorType>
 struct OpConstantSaveableParams : public OpDataHolderSaveableParams<TensorType>
 {
   fetch::ml::OpType op_type = OpType::OP_CONSTANT;
@@ -584,6 +624,7 @@ template <typename TensorType>
 struct OpReshapeSaveableParams : public OpsSaveableParams
 {
   std::vector<fetch::math::SizeType> new_shape;
+  fetch::math::SizeType              new_size;
   fetch::ml::OpType                  op_type = OpType::OP_RESHAPE;
 };
 

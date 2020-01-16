@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -36,8 +36,8 @@ using namespace fetch::beacon;
 
 using fetch::crypto::Prover;
 
-using std::this_thread::sleep_for;
 using std::chrono::milliseconds;
+using std::this_thread::sleep_for;
 using MuddleAddress = byte_array::ConstByteArray;
 
 class DummyManifestCache : public fetch::shards::ManifestCacheInterface
@@ -128,6 +128,7 @@ void RunTrustedDealer(uint16_t total_renewals = 4, uint32_t cabinet_size = 4,
     pending_nodes.emplace(ii);
   }
 
+  uint64_t timer = 0;
   while (!pending_nodes.empty())
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -144,6 +145,18 @@ void RunTrustedDealer(uint16_t total_renewals = 4, uint32_t cabinet_size = 4,
       {
         ++it;
       }
+
+      if (timer == 100)
+      {
+        FETCH_LOG_ERROR("TrustedDealerTest", "Only connected to: ",
+                        static_cast<uint32_t>(muddle.GetNumDirectlyConnectedPeers()));
+      }
+    }
+    ++timer;
+
+    if (timer > 100)
+    {
+      throw std::runtime_error("Could not connect to other cabinet members");
     }
   }
 
@@ -186,7 +199,6 @@ void RunTrustedDealer(uint16_t total_renewals = 4, uint32_t cabinet_size = 4,
       // Note, to avoid limiting the 'look ahead' entropy gen, set the block to ahead of numbers per
       // aeon
       member->beacon_service.MostRecentSeen((i * aeon_period) + aeon_period - 1);
-      member->setup_service.Abort(aeon_period);
     }
 
     // Wait for everyone to finish

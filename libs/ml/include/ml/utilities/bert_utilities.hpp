@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -20,7 +20,8 @@
 #include "core/filesystem/read_file_contents.hpp"
 #include "core/serializers/base_types.hpp"
 #include "core/serializers/main_serializer.hpp"
-#include "math/tensor.hpp"
+#include "math/metrics/cross_entropy.hpp"
+#include "math/tensor/tensor.hpp"
 #include "ml/core/graph.hpp"
 #include "ml/layers/fully_connected.hpp"
 #include "ml/layers/normalisation/layer_norm.hpp"
@@ -55,8 +56,8 @@ struct BERTConfig
   SizeType ff_dims           = 3072u;
   SizeType vocab_size        = 30522u;
   SizeType segment_size      = 2u;
-  DataType epsilon           = static_cast<DataType>(1e-12);
-  DataType dropout_keep_prob = static_cast<DataType>(0.9);
+  DataType epsilon           = fetch::math::Type<DataType>("0.000000000001");
+  DataType dropout_drop_prob = fetch::math::Type<DataType>("0.1");
 };
 
 template <class TensorType>
@@ -91,7 +92,7 @@ std::pair<std::vector<std::string>, std::vector<std::string>> MakeBertModel(
   SizeType vocab_size        = config.vocab_size;
   SizeType segment_size      = config.segment_size;
   DataType epsilon           = config.epsilon;
-  DataType dropout_keep_prob = config.dropout_keep_prob;
+  DataType dropout_drop_prob = config.dropout_drop_prob;
 
   // initiate graph
   std::string segment = g.template AddNode<fetch::ml::ops::PlaceHolder<TensorType>>("Segment", {});
@@ -127,7 +128,7 @@ std::pair<std::vector<std::string>, std::vector<std::string>> MakeBertModel(
     // create the encoding layer first
     layer_output = g.template AddNode<fetch::ml::layers::SelfAttentionEncoder<TensorType>>(
         "SelfAttentionEncoder_No_" + std::to_string(i), {layer_output, mask}, n_heads, model_dims,
-        ff_dims, dropout_keep_prob, dropout_keep_prob, dropout_keep_prob, epsilon);
+        ff_dims, dropout_drop_prob, dropout_drop_prob, dropout_drop_prob, epsilon);
     // store layer output names
     encoder_outputs.emplace_back(layer_output);
   }
@@ -150,7 +151,7 @@ void EvaluateGraph(fetch::ml::Graph<TensorType> &g, std::vector<std::string> inp
     std::cout << "correct label | guessed label | sample loss" << std::endl;
   }
   DataType total_val_loss  = 0;
-  auto     correct_counter = static_cast<DataType>(0);
+  auto     correct_counter = DataType{0};
   for (SizeType b = 0; b < static_cast<SizeType>(output_data.shape(1)); b++)
   {
     for (SizeType i = 0; i < static_cast<SizeType>(4); i++)
@@ -163,13 +164,13 @@ void EvaluateGraph(fetch::ml::Graph<TensorType> &g, std::vector<std::string> inp
     total_val_loss += val_loss;
 
     // count correct guesses
-    if (model_output.At(0, 0) > static_cast<DataType>(0.5) &&
-        output_data.At(0, b) == static_cast<DataType>(1))
+    if (model_output.At(0, 0) > fetch::math::Type<DataType>("0.5") &&
+        output_data.At(0, b) == DataType{1})
     {
       correct_counter++;
     }
-    else if (model_output.At(0, 0) < static_cast<DataType>(0.5) &&
-             output_data.At(0, b) == static_cast<DataType>(0))
+    else if (model_output.At(0, 0) < fetch::math::Type<DataType>("0.5") &&
+             output_data.At(0, b) == DataType{0})
     {
       correct_counter++;
     }
@@ -313,7 +314,7 @@ std::pair<std::vector<std::string>, std::vector<std::string>> LoadPretrainedBert
   SizeType vocab_size        = config.vocab_size;
   SizeType segment_size      = config.segment_size;
   DataType epsilon           = config.epsilon;
-  DataType dropout_keep_prob = config.dropout_keep_prob;
+  DataType dropout_drop_prob = config.dropout_drop_prob;
 
   // for release version
   FETCH_UNUSED(vocab_size);
@@ -393,7 +394,7 @@ std::pair<std::vector<std::string>, std::vector<std::string>> LoadPretrainedBert
     // create the encoding layer first
     layer_output = g.template AddNode<fetch::ml::layers::SelfAttentionEncoder<TensorType>>(
         "SelfAttentionEncoder_No_" + std::to_string(i), {layer_output, mask}, n_heads, model_dims,
-        ff_dims, dropout_keep_prob, dropout_keep_prob, dropout_keep_prob, epsilon);
+        ff_dims, dropout_drop_prob, dropout_drop_prob, dropout_drop_prob, epsilon);
 
     // store layer output
     encoder_outputs.emplace_back(layer_output);
@@ -470,14 +471,14 @@ TensorType RunPseudoForwardPass(std::vector<std::string> input_nodes, std::strin
   SizeType seq_len     = 256u;
 
   TensorType tokens_data({max_seq_len, batch_size});
-  tokens_data.Fill(static_cast<DataType>(1));
+  tokens_data.Fill(DataType{1});
 
   TensorType mask_data({max_seq_len, 1, batch_size});
   for (SizeType i = 0; i < seq_len; i++)
   {
     for (SizeType b = 0; b < batch_size; b++)
     {
-      mask_data.Set(i, 0, b, static_cast<DataType>(1));
+      mask_data.Set(i, 0, b, DataType{1});
     }
   }
   TensorType position_data({max_seq_len, batch_size});
@@ -510,8 +511,7 @@ TensorType RunPseudoForwardPass(std::vector<std::string> input_nodes, std::strin
       std::cout << " | " << output.shape(i);
     }
     // show the first token representation of the first batch of the specified output layer's output
-    std::cout << "\nfirst token: \n"
-              << output.View(0).Copy().View(0).Copy().ToString() << std::endl;
+    std::cout << "\nfirst token: \n" << output.View(0).Copy().View(0).ToString() << std::endl;
   }
   return output;
 }
@@ -550,11 +550,11 @@ std::vector<TensorType> PrepareTensorForBert(TensorType const &            data,
     for (SizeType i = 0; i < max_seq_len; i++)
     {
       // stop filling 1 to mask if current position is 0 for token
-      if (data.At(i, b) == static_cast<DataType>(0))
+      if (data.At(i, b) == DataType{0})
       {
         break;
       }
-      mask_data.Set(i, 0, b, static_cast<DataType>(1));
+      mask_data.Set(i, 0, b, DataType{1});
     }
   }
   return {segment_data, position_data, data, mask_data};

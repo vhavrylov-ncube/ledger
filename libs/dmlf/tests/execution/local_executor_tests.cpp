@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -97,14 +97,14 @@ public:
 
   bool IsSuccessfullyFulfilled(PromiseOfResult &promise)
   {
-    result = promise.Get();
+    promise.GetResult(result);
     return result.succeeded() && result.console().empty() &&
            result.output().type() == VariantType::STRING;
   }
 
   bool IsSuccessfullyFulfilledWithOutput(PromiseOfResult &promise, std::string const &output)
   {
-    result = promise.Get();
+    promise.GetResult(result);
     return result.succeeded() && result.console() == output &&
            result.output().type() == VariantType::STRING;
   }

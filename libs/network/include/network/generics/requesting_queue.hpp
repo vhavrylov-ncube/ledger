@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -208,11 +208,23 @@ typename RequestingQueueOf<K, R, P, H>::Counters RequestingQueueOf<K, R, P, H>::
       ++iter;
       break;
     case PromiseState::SUCCESS:
-      completed_.emplace_back(SuccessfulResult{key, promise.Get()});
-      ++num_completed_;
+    {
+      R value{};
+      if (promise.GetResult(value))
+      {
+        completed_.emplace_back(SuccessfulResult{key, value});
+        ++num_completed_;
+      }
+      else
+      {
+        failed_.emplace_back(FailedResult{key, promise});
+        ++num_failed_;
+      }
+
       --num_pending_;
       iter = requests_.erase(iter);
       break;
+    }
     case PromiseState::FAILED:
     case PromiseState::TIMEDOUT:
       failed_.emplace_back(FailedResult{key, promise});

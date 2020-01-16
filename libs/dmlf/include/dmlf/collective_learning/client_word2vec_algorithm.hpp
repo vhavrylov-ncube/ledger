@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ class ClientWord2VecAlgorithm : public ClientAlgorithm<TensorType>
   using VectorTensorType = std::vector<TensorType>;
   using VectorSizeVector = std::vector<std::vector<SizeType>>;
 
-  using GradientType               = fetch::dmlf::Update<TensorType>;
+  using GradientType               = fetch::dmlf::deprecated_Update<TensorType>;
   using AlgorithmControllerType    = ClientAlgorithmController<TensorType>;
   using AlgorithmControllerPtrType = std::shared_ptr<ClientAlgorithmController<TensorType>>;
 
@@ -92,7 +92,7 @@ ClientWord2VecAlgorithm<TensorType>::ClientWord2VecAlgorithm(
   // calculate the compatible linear lr decay
   // this decay rate guarantees that the lr is reduced to zero by the
   // end of an epoch (despite capping by ending learning rate)
-  DataType est_samples                      = w2v_data_loader_ptr_->EstimatedSampleNumber();
+  SizeType est_samples                      = w2v_data_loader_ptr_->EstimatedSampleNumber();
   tp_.learning_rate_param.linear_decay_rate = DataType{1} / est_samples;
   std::cout << "id: " << id << ", dataloader_.EstimatedSampleNumber(): " << est_samples
             << std::endl;
@@ -119,14 +119,15 @@ void ClientWord2VecAlgorithm<TensorType>::Run()
 template <class TensorType>
 void ClientWord2VecAlgorithm<TensorType>::Test()
 {
-  if (this->round_counter_ % tp_.test_frequency == tp_.test_frequency - 1)
+  if (this->update_counter_ % tp_.test_frequency == tp_.test_frequency - 1)
   {
     // Lock model
     FETCH_LOCK(this->model_mutex_);
 
     fetch::ml::utilities::TestEmbeddings<TensorType>(
-        *this->graph_ptr_, skipgram_, *w2v_data_loader_ptr_, tp_.word0, tp_.word1, tp_.word2,
-        tp_.word3, tp_.k, tp_.analogies_test_file, false, "/tmp/w2v_client_" + this->id_);
+        *this->graph_ptr_, skipgram_, *(w2v_data_loader_ptr_->GetVocab()), tp_.word0, tp_.word1,
+        tp_.word2, tp_.word3, tp_.k, tp_.analogies_test_file, false,
+        "/tmp/w2v_client_" + this->id_);
   }
 }
 
@@ -135,7 +136,7 @@ float ClientWord2VecAlgorithm<TensorType>::ComputeAnalogyScore()
 {
   TensorType const &weights = fetch::ml::utilities::GetEmbeddings(*this->graph_ptr_, skipgram_);
 
-  return fetch::ml::utilities::AnalogiesFileTest(*w2v_data_loader_ptr_, weights,
+  return fetch::ml::utilities::AnalogiesFileTest(*(w2v_data_loader_ptr_->GetVocab()), weights,
                                                  tp_.analogies_test_file)
       .second;
 }
@@ -144,7 +145,8 @@ float ClientWord2VecAlgorithm<TensorType>::ComputeAnalogyScore()
  * @return vector of gradient update values
  */
 template <class TensorType>
-std::shared_ptr<fetch::dmlf::Update<TensorType>> ClientWord2VecAlgorithm<TensorType>::GetUpdate()
+std::shared_ptr<fetch::dmlf::deprecated_Update<TensorType>>
+ClientWord2VecAlgorithm<TensorType>::GetUpdate()
 {
   FETCH_LOCK(this->model_mutex_);
 
@@ -215,22 +217,22 @@ void ClientWord2VecAlgorithm<TensorType>::PrepareOptimiser()
       this->graph_ptr_->template AddNode<fetch::ml::ops::PlaceHolder<TensorType>>("Input", {});
   std::string context_name =
       this->graph_ptr_->template AddNode<fetch::ml::ops::PlaceHolder<TensorType>>("Context", {});
-  this->params_.label_name =
+  this->label_name_ =
       this->graph_ptr_->template AddNode<fetch::ml::ops::PlaceHolder<TensorType>>("Label", {});
   skipgram_ = this->graph_ptr_->template AddNode<fetch::ml::layers::SkipGram<TensorType>>(
       "SkipGram", {input_name, context_name}, SizeType(1), SizeType(1), tp_.embedding_size,
       w2v_data_loader_ptr_->vocab_size());
 
-  this->params_.error_name =
+  this->error_name_ =
       this->graph_ptr_->template AddNode<fetch::ml::ops::CrossEntropyLoss<TensorType>>(
-          "Error", {skipgram_, this->params_.label_name});
+          "Error", {skipgram_, this->label_name_});
 
-  this->params_.input_names = {input_name, context_name};
+  this->input_names_ = {input_name, context_name};
 
   // Initialise Optimiser
   this->optimiser_ptr_ = std::make_shared<fetch::ml::optimisers::LazyAdamOptimiser<TensorType>>(
-      this->graph_ptr_, this->params_.input_names, this->params_.label_name,
-      this->params_.error_name, tp_.learning_rate_param);
+      this->graph_ptr_, this->input_names_, this->label_name_, this->error_name_,
+      tp_.learning_rate_param);
 }
 
 template <class TensorType>

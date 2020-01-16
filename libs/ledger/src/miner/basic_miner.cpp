@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 
 #include "chain/address.hpp"
 #include "chain/transaction.hpp"
+#include "chain/transaction_validity_period.hpp"
 #include "ledger/chain/block.hpp"
 #include "ledger/chain/main_chain.hpp"
 #include "ledger/miner/basic_miner.hpp"
@@ -102,7 +103,7 @@ void BasicMiner::EnqueueTransaction(chain::TransactionLayout const &layout)
 
   if (layout.mask().size() != (1u << log2_num_lanes_))
   {
-    FETCH_LOG_WARN(LOGGING_NAME, "Disgarding layout due to incompatible mask size");
+    FETCH_LOG_WARN(LOGGING_NAME, "Discarding layout due to incompatible mask size");
     return;
   }
 
@@ -137,9 +138,14 @@ void BasicMiner::GenerateBlock(Block &block, std::size_t num_lanes, std::size_t 
     mining_pool_.Splice(pending_);
   }
 
+  std::remove_if(mining_pool_.begin(), mining_pool_.end(), [&block](auto const &tx_layout) {
+    return fetch::chain::GetValidity(tx_layout, block.block_number) !=
+           chain::Transaction::Validity::VALID;
+  });
+
   // detect the transactions which have already been incorporated into previous blocks
   auto const duplicates =
-      chain.DetectDuplicateTransactions(block.previous_hash, mining_pool_.digests());
+      chain.DetectDuplicateTransactions(block.previous_hash, mining_pool_.TxLayouts());
 
   duplicate_filtered_count_->add(duplicates.size());
 
@@ -303,7 +309,7 @@ void BasicMiner::GenerateSlice(Queue &transactions, Block::Slice &      slice,
 bool BasicMiner::SortByFee(TransactionLayout const &a, TransactionLayout const &b)
 {
   // this doesn't seem to the a good metric
-  return a.charge() > b.charge();
+  return a.charge_rate() > b.charge_rate();
 }
 
 }  // namespace ledger

@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ constexpr char const *LOGGING_NAME = "ShardMgmt";
 
 ShardManagementService::ShardManagementService(Manifest manifest, ShardManagementInterface &shards,
                                                MuddleInterface &muddle, uint32_t log2_num_lanes)
-  : core::PeriodicRunnable(1s)
+  : core::PeriodicRunnable("ShardManagement", 1s)
   , shards_{shards}
   , muddle_{muddle}
   , manifest_{std::move(manifest)}
@@ -116,33 +116,49 @@ void ShardManagementService::ResolveUpdates()
   auto const now = Clock::now();
 
   // loop through all the outstanding requests
-  auto it = pending_requests_.begin();
-  while (it != pending_requests_.end())
+  auto    it = pending_requests_.begin();
+  Address current_peer;
+
+  try
   {
-    if (it->second->IsSuccessful())
+    while (it != pending_requests_.end())
     {
-      FETCH_LOG_TRACE(LOGGING_NAME, "Resolved manifest from: ", it->first.ToBase64());
+      current_peer = it->first;
+      if (it->second->IsSuccessful())
+      {
+        FETCH_LOG_TRACE(LOGGING_NAME, "Resolved manifest from: ", it->first.ToBase64());
 
-      // look up the cache entry
-      auto &entry = manifest_cache_[it->first];
+        // look up the cache entry
+        auto &entry = manifest_cache_[it->first];
 
-      // update the cache entry
-      entry.manifest     = it->second->As<Manifest>();
-      entry.last_updated = now;
+        Manifest manifest{};
 
-      // remove the promise from the queue
-      it = pending_requests_.erase(it);
+        // update the cache entry
+        if (it->second->GetResult(manifest))
+        {
+          entry.manifest     = manifest;
+          entry.last_updated = now;
+        }
+
+        // remove the promise from the queue
+        it = pending_requests_.erase(it);
+      }
+      else if (it->second->IsFailed())
+      {
+        FETCH_LOG_WARN(LOGGING_NAME, "Failed to get manifest from ", it->first.ToBase64());
+        it = pending_requests_.erase(it);
+      }
+      else
+      {
+        // continue waiting for the promise to resolve
+        ++it;
+      }
     }
-    else if (it->second->IsFailed())
-    {
-      FETCH_LOG_WARN(LOGGING_NAME, "Failed to get manifest from ", it->first.ToBase64());
-      it = pending_requests_.erase(it);
-    }
-    else
-    {
-      // continue waiting for the promise to resolve
-      ++it;
-    }
+  }
+  catch (std::exception const &e)
+  {
+    FETCH_LOG_WARN(LOGGING_NAME, "Failed to request manifest from peer: ", current_peer,
+                   " exception thrown: ", e.what());
   }
 }
 

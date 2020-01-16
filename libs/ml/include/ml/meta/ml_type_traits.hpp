@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -67,6 +67,8 @@ enum class OpType : uint16_t
   // OpKind - Op
   OP_ABS,
   OP_ADD,
+  OP_AVG_POOL_1D,
+  OP_AVG_POOL_2D,
   OP_CONCATENATE,
   OP_CONSTANT,
   OP_CONVOLUTION_1D,
@@ -81,7 +83,6 @@ enum class OpType : uint16_t
   OP_GELU,
   OP_LAYER_NORM,
   OP_LEAKY_RELU,
-  OP_PRELU_OP,
   OP_LOG,
   OP_LOGSIGMOID,
   OP_LOGSOFTMAX,
@@ -90,34 +91,36 @@ enum class OpType : uint16_t
   OP_MAX_POOL,
   OP_MAX_POOL_1D,
   OP_MAX_POOL_2D,
-  OP_AVG_POOL_1D,
-  OP_AVG_POOL_2D,
   OP_MAXIMUM,
   OP_MULTIPLY,
+  OP_ONE_HOT,
   OP_PLACEHOLDER,
-  OP_PRELU,
+  OP_PRELU_OP,
   OP_RANDOMISED_RELU,
+  OP_REDUCE_MEAN,
   OP_RELU,
   OP_RESHAPE,
   OP_SIGMOID,
+  OP_SLICE,
   OP_SOFTMAX,
+  OP_SQUEEZE,
   OP_SQRT,
   OP_SUBTRACT,
+  OP_STRIDED_SLICE,
   OP_SWITCH,
   OP_TANH,
   OP_TRANSPOSE,
-  OP_ONE_HOT,
   OP_TOP_K,
   OP_VARIABLE,
   OP_WEIGHTS,
-  OP_SLICE,
-  OP_SQUEEZE,
-  OP_REDUCE_MEAN,
 
   // OpKind - LOSS
   LOSS_CROSS_ENTROPY,
   LOSS_SOFTMAX_CROSS_ENTROPY,
   LOSS_MEAN_SQUARE_ERROR,
+
+  // Metrics
+  METRIC_CATEGORICAL_ACCURACY,
 
   // OpKind - LAYER
   SUBGRAPH,

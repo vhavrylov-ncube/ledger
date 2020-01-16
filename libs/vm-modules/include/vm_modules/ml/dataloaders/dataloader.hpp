@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,10 +18,13 @@
 //------------------------------------------------------------------------------
 
 #include "core/serializers/main_serializer.hpp"
+#include "math/tensor/tensor.hpp"
 #include "ml/dataloaders/dataloader.hpp"
 #include "ml/dataloaders/tensor_dataloader.hpp"
 #include "vm/array.hpp"
 #include "vm/object.hpp"
+#include "vm/pair.hpp"
+#include "vm_modules/math/tensor/tensor.hpp"
 #include "vm_modules/math/type.hpp"
 
 #include <memory>
@@ -33,21 +36,18 @@ class VMTensor;
 }
 namespace ml {
 
-class VMTrainingPair;
-
 class VMDataLoader : public fetch::vm::Object
 {
 public:
   using DataType          = fetch::vm_modules::math::DataType;
   using TensorType        = fetch::math::Tensor<DataType>;
-  using DataLoaderType    = fetch::ml::dataloaders::DataLoader<TensorType, TensorType>;
+  using DataLoaderType    = fetch::ml::dataloaders::DataLoader<TensorType>;
   using DataLoaderPtrType = std::shared_ptr<DataLoaderType>;
 
   enum class DataLoaderMode : uint8_t
   {
     NONE,
     TENSOR,
-    COMMODITY
   };
 
   VMDataLoader(fetch::vm::VM *vm, fetch::vm::TypeId type_id);
@@ -57,16 +57,7 @@ public:
   static fetch::vm::Ptr<VMDataLoader> Constructor(fetch::vm::VM *vm, fetch::vm::TypeId type_id,
                                                   fetch::vm::Ptr<fetch::vm::String> const &mode);
 
-  static void Bind(fetch::vm::Module &module);
-
-  /**
-   * Add data to a dataloader by passing the filenames
-   * @param mode
-   * @param xfilename
-   * @param yfilename
-   */
-  void AddDataByFiles(fetch::vm::Ptr<fetch::vm::String> const &xfilename,
-                      fetch::vm::Ptr<fetch::vm::String> const &yfilename);
+  static void Bind(fetch::vm::Module &module, bool enable_experimental);
 
   /**
    * Add data to a data loader by passing in the data and labels
@@ -78,14 +69,6 @@ public:
       fetch::vm::Ptr<fetch::vm::Array<fetch::vm::Ptr<fetch::vm_modules::math::VMTensor>>> const
           &                                                    data,
       fetch::vm::Ptr<fetch::vm_modules::math::VMTensor> const &labels);
-
-  /**
-   * Add data to commodity data loader
-   * @param xfilename
-   * @param yfilename
-   */
-  void AddCommodityData(fetch::vm::Ptr<fetch::vm::String> const &xfilename,
-                        fetch::vm::Ptr<fetch::vm::String> const &yfilename);
 
   /**
    * Add data to tensor data loader
@@ -101,7 +84,9 @@ public:
    * Get the next training pair of data and labels from the dataloader
    * @return
    */
-  fetch::vm::Ptr<VMTrainingPair> GetNext();
+  vm::Ptr<vm::Pair<vm::Ptr<math::VMTensor>,
+                   vm::Ptr<fetch::vm::Array<vm::Ptr<fetch::vm_modules::math::VMTensor>>>>>
+  GetNext();
 
   bool IsDone();
 
@@ -151,14 +136,9 @@ struct MapSerializer<fetch::vm_modules::ml::VMDataLoader, D>
 
       switch (sp.mode_)
       {
-      case vm_modules::ml::VMDataLoader::DataLoaderMode::COMMODITY:
-      {
-        throw std::runtime_error("commodity dataloader serialization not yet implemented");
-      }
       case vm_modules::ml::VMDataLoader::DataLoaderMode::TENSOR:
       {
         auto tdl_ptr = std::static_pointer_cast<fetch::ml::dataloaders::TensorDataLoader<
-            fetch::math::Tensor<vm_modules::math::DataType>,
             fetch::math::Tensor<vm_modules::math::DataType>>>(sp.loader_);
         map.Append(LOADER, *tdl_ptr);
         break;
@@ -179,30 +159,25 @@ struct MapSerializer<fetch::vm_modules::ml::VMDataLoader, D>
   template <typename MapDeserializer>
   static void Deserialize(MapDeserializer &map, Type &sp)
   {
-    uint8_t mode;
+    uint8_t mode{};
     map.ExpectKeyGetValue(MODE, mode);
     sp.mode_ = static_cast<vm_modules::ml::VMDataLoader::DataLoaderMode>(mode);
 
-    bool has_loader;
+    bool has_loader{};
     map.ExpectKeyGetValue(HAS_LOADER, has_loader);
     if (has_loader)
     {
       switch (sp.mode_)
       {
-      case vm_modules::ml::VMDataLoader::DataLoaderMode::COMMODITY:
-      {
-        throw std::runtime_error("commodity dataloader deserialization not yet implemented");
-      }
       case vm_modules::ml::VMDataLoader::DataLoaderMode::TENSOR:
       {
         auto tdl_ptr = std::make_shared<fetch::ml::dataloaders::TensorDataLoader<
-            fetch::math::Tensor<vm_modules::math::DataType>,
+
             fetch::math::Tensor<vm_modules::math::DataType>>>();
         map.ExpectKeyGetValue(LOADER, *tdl_ptr);
 
         sp.loader_ = std::static_pointer_cast<
-            fetch::ml::dataloaders::DataLoader<fetch::math::Tensor<vm_modules::math::DataType>,
-                                               fetch::math::Tensor<vm_modules::math::DataType>>>(
+            fetch::ml::dataloaders::DataLoader<fetch::math::Tensor<vm_modules::math::DataType>>>(
             tdl_ptr);
 
         break;

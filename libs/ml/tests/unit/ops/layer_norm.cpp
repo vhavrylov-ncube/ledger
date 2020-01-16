@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -72,8 +72,8 @@ TYPED_TEST(LayerNormTest, forward_test_3d)
       "3, 6, 4, 13");
 
   data.Reshape({3, 2, 2});
-  auto s1 = data.View(0).Copy().ToString();
-  auto s2 = data.View(1).Copy().ToString();
+  auto s1 = data.View(0).ToString();
+  auto s2 = data.View(1).ToString();
 
   TensorType gt = TensorType::FromString(
       "-1.22474487, -0.98058068, 0, -0.79006571;"
@@ -116,9 +116,8 @@ TYPED_TEST(LayerNormTest, backward_test_2d)
   auto backward_errors = op.Backward({std::make_shared<TensorType>(data)}, error_signal).at(0);
 
   // test correct values
-  ASSERT_TRUE(backward_errors.AllClose(
-      gt, fetch::math::function_tolerance<DataType>(),
-      static_cast<DataType>(15) * fetch::math::function_tolerance<DataType>()));
+  ASSERT_TRUE(backward_errors.AllClose(gt, fetch::math::function_tolerance<DataType>(),
+                                       DataType{15} * fetch::math::function_tolerance<DataType>()));
 }
 
 TYPED_TEST(LayerNormTest, backward_test_3d)
@@ -150,9 +149,8 @@ TYPED_TEST(LayerNormTest, backward_test_3d)
   auto backward_errors = op.Backward({std::make_shared<TensorType>(data)}, error_signal).at(0);
 
   // test correct values
-  ASSERT_TRUE(backward_errors.AllClose(
-      gt, fetch::math::function_tolerance<DataType>(),
-      static_cast<DataType>(15) * fetch::math::function_tolerance<DataType>()));
+  ASSERT_TRUE(backward_errors.AllClose(gt, fetch::math::function_tolerance<DataType>(),
+                                       DataType{15} * fetch::math::function_tolerance<DataType>()));
 }
 
 TYPED_TEST(LayerNormTest, saveparams_test)
@@ -168,13 +166,8 @@ TYPED_TEST(LayerNormTest, saveparams_test)
       "3, 6, 4, 13");
 
   data.Reshape({3, 2, 2});
-  auto s1 = data.View(0).Copy().ToString();
-  auto s2 = data.View(1).Copy().ToString();
-
-  TensorType gt = TensorType::FromString(
-      "-1.22474487, -0.98058068, 0, -0.79006571;"
-      "0, -0.39223227, -1.22474487,  -0.62076591;"
-      "1.22474487,  1.37281295, 1.22474487, 1.41083162");
+  auto s1 = data.View(0).ToString();
+  auto s2 = data.View(1).ToString();
 
   fetch::ml::ops::LayerNorm<TensorType> op(static_cast<typename TypeParam::SizeType>(0));
 
@@ -204,8 +197,7 @@ TYPED_TEST(LayerNormTest, saveparams_test)
   op.Forward({std::make_shared<TensorType>(data)}, new_prediction);
 
   // test correct values
-  EXPECT_TRUE(
-      new_prediction.AllClose(prediction, static_cast<DataType>(0), static_cast<DataType>(0)));
+  EXPECT_TRUE(new_prediction.AllClose(prediction, DataType{0}, DataType{0}));
 }
 
 TYPED_TEST(LayerNormTest, saveparams_backward_test_3d)

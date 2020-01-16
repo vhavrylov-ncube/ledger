@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -338,6 +338,65 @@ inline int32_t first_element(VectorRegister<int32_t, 128> const &x)
 inline int32_t first_element(VectorRegister<int32_t, 256> const &x)
 {
   return static_cast<int32_t>(_mm256_extract_epi32(x.data(), 0));
+}
+
+template <int32_t elements>
+inline VectorRegister<int32_t, 128> rotate_elements_left(VectorRegister<int32_t, 128> const &x)
+{
+  __m128i n = x.data();
+  n         = _mm_alignr_epi8(n, n, elements * 4);
+  return {n};
+}
+
+template <int32_t elements>
+inline VectorRegister<int32_t, 256> rotate_elements_left(VectorRegister<int32_t, 256> const &x);
+
+template <>
+inline VectorRegister<int32_t, 256> rotate_elements_left<0>(VectorRegister<int32_t, 256> const &x)
+{
+  return x;
+}
+
+template <>
+inline VectorRegister<int32_t, 256> rotate_elements_left<1>(VectorRegister<int32_t, 256> const &x)
+{
+  __m128i hi  = _mm256_extractf128_si256(x.data(), 1);
+  __m128i lo  = _mm256_extractf128_si256(x.data(), 0);
+  __m128i hi1 = _mm_alignr_epi8(lo, hi, 4);
+  __m128i lo1 = _mm_alignr_epi8(hi, lo, 4);
+
+  return {_mm256_set_m128i(hi1, lo1)};
+}
+
+template <>
+inline VectorRegister<int32_t, 256> rotate_elements_left<2>(VectorRegister<int32_t, 256> const &x)
+{
+  __m128i hi  = _mm256_extractf128_si256(x.data(), 1);
+  __m128i lo  = _mm256_extractf128_si256(x.data(), 0);
+  __m128i hi1 = _mm_alignr_epi8(lo, hi, 8);
+  __m128i lo1 = _mm_alignr_epi8(hi, lo, 8);
+
+  return {_mm256_set_m128i(hi1, lo1)};
+}
+
+template <>
+inline VectorRegister<int32_t, 256> rotate_elements_left<3>(VectorRegister<int32_t, 256> const &x)
+{
+  __m128i hi  = _mm256_extractf128_si256(x.data(), 1);
+  __m128i lo  = _mm256_extractf128_si256(x.data(), 0);
+  __m128i hi1 = _mm_alignr_epi8(lo, hi, 12);
+  __m128i lo1 = _mm_alignr_epi8(hi, lo, 12);
+
+  return {_mm256_set_m128i(hi1, lo1)};
+}
+
+template <>
+inline VectorRegister<int32_t, 256> rotate_elements_left<4>(VectorRegister<int32_t, 256> const &x)
+{
+  __m128i hi = _mm256_extractf128_si256(x.data(), 1);
+  __m128i lo = _mm256_extractf128_si256(x.data(), 0);
+
+  return {_mm256_set_m128i(lo, hi)};
 }
 
 inline VectorRegister<int32_t, 128> shift_elements_left(VectorRegister<int32_t, 128> const &x)

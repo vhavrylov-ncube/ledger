@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 //------------------------------------------------------------------------------
 
 #include "math/metrics/mean_absolute_error.hpp"
-#include "math/tensor.hpp"
+#include "math/tensor/tensor.hpp"
 #include "math/utilities/ReadCSV.hpp"
 #include "ml/core/graph.hpp"
 #include "ml/dataloaders/tensor_dataloader.hpp"
@@ -44,7 +44,7 @@ using SizeType   = TensorType::SizeType;
 using GraphType        = fetch::ml::Graph<TensorType>;
 using CostFunctionType = fetch::ml::ops::MeanSquareErrorLoss<TensorType>;
 using OptimiserType    = fetch::ml::optimisers::AdamOptimiser<TensorType>;
-using DataLoaderType   = fetch::ml::dataloaders::TensorDataLoader<TensorType, TensorType>;
+using DataLoaderType   = fetch::ml::dataloaders::TensorDataLoader<TensorType>;
 
 struct TrainingParams
 {
@@ -63,7 +63,7 @@ std::shared_ptr<GraphType> BuildModel(std::string &input_name, std::string &outp
   SizeType conv1D_1_kernel_size    = 32;
   SizeType conv1D_1_stride         = 2;
 
-  typename TensorType::Type keep_prob_1{0.5};
+  auto keep_prob_1 = fetch::math::Type<DataType>("0.5");
 
   SizeType conv1D_2_filters        = 1;
   SizeType conv1D_2_input_channels = conv1D_1_filters;
@@ -95,17 +95,20 @@ std::vector<TensorType> LoadData(std::string const &train_data_filename,
 {
 
   std::cout << "loading train data...: " << std::endl;
-  auto train_data_tensor = fetch::math::utilities::ReadCSV<TensorType>(train_data_filename, 0, 0);
+  auto train_data_tensor =
+      fetch::math::utilities::ReadCSV<TensorType>(train_data_filename, 0, 0, true);
 
   std::cout << "loading train labels...: " << std::endl;
   auto train_labels_tensor =
-      fetch::math::utilities::ReadCSV<TensorType>(train_labels_filename, 0, 0);
+      fetch::math::utilities::ReadCSV<TensorType>(train_labels_filename, 0, 0, true);
 
   std::cout << "loading test data...: " << std::endl;
-  auto test_data_tensor = fetch::math::utilities::ReadCSV<TensorType>(test_data_filename, 0, 0);
+  auto test_data_tensor =
+      fetch::math::utilities::ReadCSV<TensorType>(test_data_filename, 0, 0, true);
 
   std::cout << "loading test labels...: " << std::endl;
-  auto test_labels_tensor = fetch::math::utilities::ReadCSV<TensorType>(test_labels_filename, 0, 0);
+  auto test_labels_tensor =
+      fetch::math::utilities::ReadCSV<TensorType>(test_labels_filename, 0, 0, true);
 
   train_data_tensor.Reshape({1, train_data_tensor.shape().at(0), train_data_tensor.shape().at(1)});
   train_labels_tensor.Reshape(

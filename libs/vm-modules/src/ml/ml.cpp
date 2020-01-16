@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -17,14 +17,12 @@
 //------------------------------------------------------------------------------
 
 #include "vm/module.hpp"
-#include "vm_modules/math/tensor.hpp"
+#include "vm_modules/math/tensor/tensor.hpp"
 #include "vm_modules/ml/dataloaders/dataloader.hpp"
 #include "vm_modules/ml/graph.hpp"
 #include "vm_modules/ml/ml.hpp"
 #include "vm_modules/ml/model/model.hpp"
 #include "vm_modules/ml/optimisation/optimiser.hpp"
-#include "vm_modules/ml/state_dict.hpp"
-#include "vm_modules/ml/training_pair.hpp"
 #include "vm_modules/ml/utilities/mnist_utilities.hpp"
 #include "vm_modules/ml/utilities/scaler.hpp"
 
@@ -34,28 +32,26 @@ namespace fetch {
 namespace vm_modules {
 namespace ml {
 
-void BindML(Module &module)
+void BindML(Module &module, bool const enable_experimental)
 {
   // Tensor - required by later functions
-  math::VMTensor::Bind(module);
+  math::VMTensor::Bind(module, enable_experimental);
 
   // ml fundamentals
-  VMStateDict::Bind(module);
-  VMGraph::Bind(module);
-  VMTrainingPair::Bind(module);
+  VMGraph::Bind(module, enable_experimental);
 
   // dataloader
-  VMDataLoader::Bind(module);
+  VMDataLoader::Bind(module, enable_experimental);
 
   // optimisers
-  VMOptimiser::Bind(module);
+  VMOptimiser::Bind(module, enable_experimental);
 
   // model
-  model::VMModel::Bind(module);
+  model::VMModel::Bind(module, enable_experimental);
 
   // utilities
-  utilities::VMScaler::Bind(module);
-  utilities::BindMNISTUtils(module);
+  utilities::VMScaler::Bind(module, enable_experimental);
+  utilities::BindMNISTUtils(module, enable_experimental);
 }
 
 }  // namespace ml

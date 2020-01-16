@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -88,7 +88,7 @@ TEST_F(TransactionLayoutTests, BasicTest)
   TransactionLayout const layout{*tx, 2};
 
   EXPECT_EQ(layout.digest(), tx->digest());
-  EXPECT_EQ(layout.charge(), tx->charge());
+  EXPECT_EQ(layout.charge_rate(), tx->charge_rate());
   EXPECT_EQ(layout.valid_from(), tx->valid_from());
   EXPECT_EQ(layout.valid_until(), tx->valid_until());
 }
@@ -116,7 +116,7 @@ TEST_F(TransactionLayoutTests, FixedBasicTest)
   TransactionLayout const layout{*tx, 2};
 
   EXPECT_EQ(layout.digest(), tx->digest());
-  EXPECT_EQ(layout.charge(), tx->charge());
+  EXPECT_EQ(layout.charge_rate(), tx->charge_rate());
   EXPECT_EQ(layout.valid_from(), tx->valid_from());
   EXPECT_EQ(layout.valid_until(), tx->valid_until());
 

@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -95,16 +95,16 @@ std::shared_ptr<Module> VMFactory::GetModule(uint64_t enabled)
     CreateToString(*module);
     CreateToBool(*module);
 
-    StructuredData::Bind(*module);
     ByteArrayWrapper::Bind(*module);
     math::UInt256Wrapper::Bind(*module);
     SHA256Wrapper::Bind(*module);
+    StructuredData::Bind(*module);
   }
 
   // math modules
   if ((MOD_MATH & enabled) != 0u)
   {
-    math::BindMath(*module);
+    math::BindMath(*module, static_cast<bool>(enabled & MOD_EXPERIMENTAL_ML));
   }
 
   // bitwise operation modules
@@ -117,7 +117,7 @@ std::shared_ptr<Module> VMFactory::GetModule(uint64_t enabled)
   // ml modules
   if ((MOD_ML & enabled) != 0u)
   {
-    ml::BindML(*module);
+    ml::BindML(*module, static_cast<bool>(enabled & MOD_EXPERIMENTAL_ML));
   }
 
   // ledger modules

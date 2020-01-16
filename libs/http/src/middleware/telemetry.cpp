@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -68,6 +68,11 @@ void TelemetryData::Update(HTTPRequest const &request, HTTPResponse const &respo
   {
     path = "/api/tx";
   }
+  else if (core::StartsWith(path, "/api/status/tx/"))
+  {
+    path = "/api/status/tx";
+  }
+
   // update the duration stats
   durations_->Add(path, request.GetDuration());
 

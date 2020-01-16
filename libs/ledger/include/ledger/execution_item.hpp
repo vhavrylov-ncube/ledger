@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -112,7 +112,7 @@ inline void ExecutionItem::Execute(ExecutorInterface &executor)
   {
     FETCH_LOG_WARN(LOGGING_NAME, "Exception thrown while executing transaction: ", ex.what());
 
-    result_ = {ContractExecutionStatus::RESOURCE_FAILURE};
+    result_ = {ContractExecutionStatus::INTERNAL_ERROR};
   }
 }
 

@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #include "math/utilities/ReadCSV.hpp"
 #include "vm/module.hpp"
 #include "vm_modules/math/read_csv.hpp"
-#include "vm_modules/math/tensor.hpp"
+#include "vm_modules/math/tensor/tensor.hpp"
 
 namespace fetch {
 
@@ -43,9 +43,12 @@ fetch::vm::Ptr<fetch::vm_modules::math::VMTensor> ReadCSV(
 
 }  // namespace
 
-void BindReadCSV(fetch::vm::Module &module)
+void BindReadCSV(fetch::vm::Module &module, bool const enable_experimental)
 {
-  module.CreateFreeFunction("readCSV", &ReadCSV);
+  if (enable_experimental)
+  {
+    module.CreateFreeFunction("readCSV", &ReadCSV);
+  }
 }
 
 }  // namespace math

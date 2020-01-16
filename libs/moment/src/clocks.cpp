@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ namespace {
 
 using ClockStore = std::unordered_map<std::string, ClockPtr>;
 
-Mutex      clock_store_lock;
+Mutex      clock_store_lock{};
 ClockStore clock_store;
 
 /**
@@ -133,10 +133,24 @@ AdjustableClockPtr CreateAdjustableClock(char const *name, ClockType type)
   return clock;
 }
 
-uint64_t GetTime(moment::ClockPtr const &clock)
+uint64_t GetTime(moment::ClockPtr const &clock, TimeAccuracy accuracy)
 {
-  return static_cast<uint64_t>(
-      std::chrono::duration_cast<std::chrono::seconds>(clock->Now().time_since_epoch()).count());
+  uint64_t ret = 0;
+
+  switch (accuracy)
+  {
+  case TimeAccuracy::SECONDS:
+    ret = static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::seconds>(clock->Now().time_since_epoch()).count());
+    break;
+  case TimeAccuracy::MILLISECONDS:
+    ret = static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(clock->Now().time_since_epoch())
+            .count());
+    break;
+  }
+
+  return ret;
 }
 
 }  // namespace moment

@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 //------------------------------------------------------------------------------
 
 #include "ml/core/graph.hpp"
+#include "ml/ops/metrics/categorical_accuracy.hpp"
 
 #include "ml/layers/PRelu.hpp"
 #include "ml/layers/convolution_1d.hpp"
@@ -33,6 +34,7 @@
 #include "ml/ops/abs.hpp"
 #include "ml/ops/activations/dropout.hpp"
 #include "ml/ops/activations/elu.hpp"
+#include "ml/ops/activations/gelu.hpp"
 #include "ml/ops/activations/leaky_relu.hpp"
 #include "ml/ops/activations/logsigmoid.hpp"
 #include "ml/ops/activations/logsoftmax.hpp"
@@ -51,7 +53,9 @@
 #include "ml/ops/exp.hpp"
 #include "ml/ops/flatten.hpp"
 #include "ml/ops/log.hpp"
-#include "ml/ops/loss_functions.hpp"
+#include "ml/ops/loss_functions/cross_entropy_loss.hpp"
+#include "ml/ops/loss_functions/mean_square_error_loss.hpp"
+#include "ml/ops/loss_functions/softmax_cross_entropy_loss.hpp"
 #include "ml/ops/mask_fill.hpp"
 #include "ml/ops/matrix_multiply.hpp"
 #include "ml/ops/max_pool.hpp"
@@ -66,6 +70,7 @@
 #include "ml/ops/slice.hpp"
 #include "ml/ops/sqrt.hpp"
 #include "ml/ops/squeeze.hpp"
+#include "ml/ops/strided_slice.hpp"
 #include "ml/ops/subtract.hpp"
 #include "ml/ops/switch.hpp"
 #include "ml/ops/tanh.hpp"
@@ -396,6 +401,13 @@ void BuildNodeAndInsertTrainables(NodeSaveableParams<T> const &nsp, std::string 
     g->AddTrainable(node, name);
     break;
   }
+  case ops::StridedSlice<T>::OpCode():
+  {
+    op_ptr = GetOp<ops::StridedSlice<T>>(nsp.op_save_params);
+    node->SetNodeSaveableParams(nsp, op_ptr);
+    g->AddTrainable(node, name);
+    break;
+  }
   case ops::ReduceMean<T>::OpCode():
   {
     op_ptr = GetOp<ops::ReduceMean<T>>(nsp.op_save_params);
@@ -542,6 +554,21 @@ void BuildNodeAndInsertTrainables(NodeSaveableParams<T> const &nsp, std::string 
     node->SetNodeSaveableParams(nsp, op_ptr);
     g->AddTrainable(node, name);
     break;
+  }
+  case OpType::METRIC_CATEGORICAL_ACCURACY:
+  {
+    op_ptr = GetOp<ops::CategoricalAccuracy<T>>(nsp.op_save_params);
+    node->SetNodeSaveableParams(nsp, op_ptr);
+    g->AddTrainable(node, name);
+    break;
+  }
+  case OpType::GRAPH:
+  case OpType::NONE:
+  case OpType::SUBGRAPH:
+  case OpType::OP_VARIABLE:
+  case OpType::OP_DATAHOLDER:
+  {
+    throw ml::exceptions::NotImplemented();
   }
   default:
     throw ml::exceptions::NotImplemented("unknown node type");

@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 //   limitations under the License.
 //
 //------------------------------------------------------------------------------
+
+#include "core/serializers/base_types.hpp"
 
 namespace fetch {
 namespace ml {
@@ -60,5 +62,4 @@ struct MapSerializer<ml::RegularisationType, D>
 };
 
 }  // namespace serializers
-
 }  // namespace fetch

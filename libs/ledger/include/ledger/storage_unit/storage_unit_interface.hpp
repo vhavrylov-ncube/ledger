@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ public:
 
   /// @name State Interface
   /// @{
-  virtual Document Get(ResourceAddress const &key)                          = 0;
+  virtual Document Get(ResourceAddress const &key) const                    = 0;
   virtual Document GetOrCreate(ResourceAddress const &key)                  = 0;
   virtual void     Set(ResourceAddress const &key, StateValue const &value) = 0;
   virtual bool     Lock(ShardIndex shard)                                   = 0;

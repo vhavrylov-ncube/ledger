@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@
 #include "dmlf/collective_learning/collective_learning_client.hpp"
 #include "dmlf/collective_learning/utilities/mnist_client_utilities.hpp"
 #include "dmlf/collective_learning/utilities/utilities.hpp"
-#include "dmlf/networkers/local_learner_networker.hpp"
+#include "dmlf/deprecated/local_learner_networker.hpp"
 #include "dmlf/simple_cycling_algorithm.hpp"
 #include "json/document.hpp"
-#include "math/tensor.hpp"
+#include "math/tensor/tensor.hpp"
 
 #include <iostream>
 #include <string>
@@ -37,6 +37,24 @@ using DataType         = fetch::fixed_point::FixedPoint<32, 32>;
 using TensorType       = fetch::math::Tensor<DataType>;
 using VectorTensorType = std::vector<TensorType>;
 using SizeType         = fetch::math::SizeType;
+
+/*  Example JSON configuration file:
+{
+        "data": "datasets/mnist_federated/mnist_images_",
+        "labels": "datasets/mnist_federated/mnist_labels_",
+        "n_clients": 5,
+        "n_peers": 3,
+        "n_rounds": 10,
+        "synchronise": true,
+        "test_set_ratio": 0.1,
+        "results": "/tmp/results/",
+        "batch_size": 32,
+        "max_updates": 100,
+        "max_epochs": 20,
+        "learning_rate": 0.02,
+        "print_loss": false,
+}
+ */
 
 int main(int argc, char **argv)
 {
@@ -56,22 +74,23 @@ int main(int argc, char **argv)
   fetch::dmlf::collective_learning::ClientParams<DataType> client_params =
       fetch::dmlf::collective_learning::utilities::ClientParamsFromJson<TensorType>(
           std::string(argv[1]), doc);
-  auto data_file      = doc["data"].As<std::string>();
-  auto labels_file    = doc["labels"].As<std::string>();
-  auto n_clients      = doc["n_clients"].As<SizeType>();
-  auto n_peers        = doc["n_peers"].As<SizeType>();
-  auto n_rounds       = doc["n_rounds"].As<SizeType>();
-  auto synchronise    = doc["synchronise"].As<bool>();
-  auto test_set_ratio = doc["test_set_ratio"].As<float>();
+  auto data_file   = doc["data"].As<std::string>();
+  auto labels_file = doc["labels"].As<std::string>();
+  auto n_clients   = doc["n_clients"].As<SizeType>();
+  auto n_peers     = doc["n_peers"].As<SizeType>();
+  auto n_rounds    = doc["n_rounds"].As<SizeType>();
+  auto synchronise = doc["synchronise"].As<bool>();
+  auto test_set_ratio =
+      fetch::math::AsType<fetch::fixed_point::fp32_t>(doc["test_set_ratio"].As<float>());
 
   std::shared_ptr<std::mutex> console_mutex_ptr = std::make_shared<std::mutex>();
 
   // Set up networkers
-  std::vector<std::shared_ptr<fetch::dmlf::LocalLearnerNetworker>> networkers(n_clients);
+  std::vector<std::shared_ptr<fetch::dmlf::deprecated_LocalLearnerNetworker>> networkers(n_clients);
   for (SizeType i(0); i < n_clients; ++i)
   {
-    networkers.at(i) = std::make_shared<fetch::dmlf::LocalLearnerNetworker>();
-    networkers.at(i)->Initialize<fetch::dmlf::Update<TensorType>>();
+    networkers.at(i) = std::make_shared<fetch::dmlf::deprecated_LocalLearnerNetworker>();
+    networkers.at(i)->Initialize<fetch::dmlf::deprecated_Update<TensorType>>();
   }
   for (SizeType i(0); i < n_clients; ++i)
   {
@@ -85,7 +104,8 @@ int main(int argc, char **argv)
   for (SizeType i{0}; i < n_clients; ++i)
   {
     clients.at(i) = fetch::dmlf::collective_learning::utilities::MakeMNISTClient<TensorType>(
-        std::to_string(i), client_params, data_file, labels_file, test_set_ratio, networkers.at(i),
+        std::to_string(i), client_params, data_file + std::to_string(i) + ".csv",
+        labels_file + std::to_string(i) + ".csv", test_set_ratio, networkers.at(i),
         console_mutex_ptr);
   }
 

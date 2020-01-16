@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -26,9 +26,8 @@
 #include "ml/saveparams/saveable_params.hpp"
 #include "ml/utilities/graph_builder.hpp"
 #include "vm/module.hpp"
-#include "vm_modules/math/tensor.hpp"
+#include "vm_modules/math/tensor/tensor.hpp"
 #include "vm_modules/ml/graph.hpp"
-#include "vm_modules/ml/state_dict.hpp"
 
 using namespace fetch::vm;
 
@@ -58,8 +57,7 @@ void VMGraph::SetInput(VMPtrString const &name, Ptr<VMTensorType> const &input)
 Ptr<VMTensorType> VMGraph::Evaluate(VMPtrString const &name)
 {
   MathTensorType    t   = graph_.Evaluate(name->string(), false);
-  Ptr<VMTensorType> ret = this->vm_->CreateNewObject<math::VMTensor>(t.shape());
-  (*ret).Copy(t);
+  Ptr<VMTensorType> ret = this->vm_->CreateNewObject<math::VMTensor>(t);
   return ret;
 }
 
@@ -141,42 +139,35 @@ void VMGraph::AddExp(VMPtrString const &name, VMPtrString const &input_name)
   graph_.AddNode<fetch::ml::ops::Exp<MathTensorType>>(name->string(), {input_name->string()});
 }
 
-void VMGraph::LoadStateDict(Ptr<VMStateDict> const &sd)
+void VMGraph::Bind(Module &module, bool const enable_experimental)
 {
-  graph_.LoadStateDict(sd->state_dict_);
-}
-
-Ptr<VMStateDict> VMGraph::StateDict()
-{
-  Ptr<VMStateDict> ret = this->vm_->CreateNewObject<VMStateDict>(graph_.StateDict());
-  return ret;
-}
-
-void VMGraph::Bind(Module &module)
-{
-  module.CreateClassType<VMGraph>("Graph")
-      .CreateConstructor(&VMGraph::Constructor)
-      .CreateSerializeDefaultConstructor([](VM *vm, TypeId type_id) -> Ptr<VMGraph> {
-        return Ptr<VMGraph>{new VMGraph(vm, type_id)};
-      })
-      .CreateMemberFunction("setInput", &VMGraph::SetInput)
-      .CreateMemberFunction("evaluate", &VMGraph::Evaluate)
-      .CreateMemberFunction("backPropagate", &VMGraph::BackPropagate)
-      .CreateMemberFunction("step", &VMGraph::Step)
-      .CreateMemberFunction("addPlaceholder", &VMGraph::AddPlaceholder)
-      .CreateMemberFunction("addFullyConnected", &VMGraph::AddFullyConnected)
-      .CreateMemberFunction("addConv1D", &VMGraph::AddConv1D)
-      .CreateMemberFunction("addRelu", &VMGraph::AddRelu)
-      .CreateMemberFunction("addSoftmax", &VMGraph::AddSoftmax)
-      .CreateMemberFunction("addDropout", &VMGraph::AddDropout)
-      .CreateMemberFunction("addCrossEntropyLoss", &VMGraph::AddCrossEntropyLoss)
-      .CreateMemberFunction("addMeanSquareErrorLoss", &VMGraph::AddMeanSquareErrorLoss)
-      .CreateMemberFunction("addTranspose", &VMGraph::AddTranspose)
-      .CreateMemberFunction("addExp", &VMGraph::AddExp)
-      .CreateMemberFunction("loadStateDict", &VMGraph::LoadStateDict)
-      .CreateMemberFunction("stateDict", &VMGraph::StateDict)
-      .CreateMemberFunction("serializeToString", &VMGraph::SerializeToString)
-      .CreateMemberFunction("deserializeFromString", &VMGraph::DeserializeFromString);
+  if (enable_experimental)
+  {
+    module.CreateClassType<VMGraph>("Graph")
+        .CreateConstructor(&VMGraph::Constructor, vm::MAXIMUM_CHARGE)
+        .CreateSerializeDefaultConstructor([](VM *vm, TypeId type_id) -> Ptr<VMGraph> {
+          return Ptr<VMGraph>{new VMGraph(vm, type_id)};
+        })
+        .CreateMemberFunction("setInput", &VMGraph::SetInput, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("evaluate", &VMGraph::Evaluate, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("backPropagate", &VMGraph::BackPropagate, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("step", &VMGraph::Step, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addPlaceholder", &VMGraph::AddPlaceholder, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addFullyConnected", &VMGraph::AddFullyConnected, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addConv1D", &VMGraph::AddConv1D, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addRelu", &VMGraph::AddRelu, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addSoftmax", &VMGraph::AddSoftmax, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addDropout", &VMGraph::AddDropout, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addCrossEntropyLoss", &VMGraph::AddCrossEntropyLoss,
+                              vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addMeanSquareErrorLoss", &VMGraph::AddMeanSquareErrorLoss,
+                              vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addTranspose", &VMGraph::AddTranspose, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("addExp", &VMGraph::AddExp, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("serializeToString", &VMGraph::SerializeToString, vm::MAXIMUM_CHARGE)
+        .CreateMemberFunction("deserializeFromString", &VMGraph::DeserializeFromString,
+                              vm::MAXIMUM_CHARGE);
+  }
 }
 
 VMGraph::GraphType &VMGraph::GetGraph()

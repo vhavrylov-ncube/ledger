@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -47,6 +47,12 @@ struct Aeon
 
   // Timeouts for waiting for other members
   uint64_t start_reference_timepoint{uint64_t(-1)};
+
+  bool operator==(Aeon const &other) const
+  {
+    return ((members == other.members) && (round_start == other.round_start) &&
+            (round_end == other.round_end));
+  }
 };
 
 // TODO(HUT): merge these into just Aeon

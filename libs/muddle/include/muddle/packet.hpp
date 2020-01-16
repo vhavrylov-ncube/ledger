@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 
 #include "core/byte_array/byte_array.hpp"
 #include "core/byte_array/const_byte_array.hpp"
+#include "core/mutex.hpp"
 #include "core/serializers/main_serializer.hpp"
 #include "crypto/prover.hpp"
 #include "crypto/verifier.hpp"
@@ -87,7 +88,8 @@ public:
     uint32_t broadcast : 1;   ///< Flag to signal that the packet is a broadcast packet
     uint32_t exchange  : 1;   ///< Flag to signal that this is an exchange packet
     uint32_t stamped   : 1;   ///< Flag to signal that the packet is signed by sender
-    uint32_t ttl       : 8;   ///< The time to live counter
+    uint32_t ttl       : 7;   ///< The time to live counter
+    uint32_t encrypted : 1;   ///< Flag to signal that the packet payload is encrypted
     uint32_t service   : 16;  ///< The service number
     uint32_t channel   : 16;  ///< The channel number
     uint32_t msg_num   : 16;  ///< Incremented message counter for detecting duplicate packets
@@ -131,8 +133,8 @@ public:
   uint32_t          GetNetworkId() const noexcept;
   RawAddress const &GetTargetRaw() const noexcept;
   RawAddress const &GetSenderRaw() const noexcept;
-  Address const &   GetTarget() const;
-  Address const &   GetSender() const;
+  Address           GetTarget() const;
+  Address           GetSender() const;
   Payload const &   GetPayload() const noexcept;
   Stamp const &     GetStamp() const noexcept;
   std::size_t       GetPacketSize() const;
@@ -141,6 +143,7 @@ public:
   void SetDirect(bool set = true) noexcept;
   void SetBroadcast(bool set = true) noexcept;
   void SetExchange(bool set = true) noexcept;
+  void SetEncrypted(bool set = true) noexcept;
   void SetTTL(uint8_t ttl) noexcept;
   void SetService(uint16_t service_num) noexcept;
   void SetChannel(uint16_t protocol_num) noexcept;
@@ -154,7 +157,7 @@ public:
   static bool ToBuffer(Packet const &packet, void *buffer, std::size_t length);
   static bool FromBuffer(Packet &packet, void const *buffer, std::size_t length);
 
-  void Sign(crypto::Prover &prover);
+  void Sign(crypto::Prover const &prover);
   bool Verify() const;
 
 private:
@@ -163,6 +166,7 @@ private:
   Stamp         stamp_;     ///< Signature when stamped
 
   ///< Cached versions of the addresses
+  mutable Mutex   lock_;
   mutable Address target_;
   mutable Address sender_;
 
@@ -214,7 +218,7 @@ inline bool Packet::IsStamped() const noexcept
 
 inline bool Packet::IsEncrypted() const noexcept
 {
-  return false;
+  return header_.encrypted != 0u;
 }
 
 inline uint8_t Packet::GetTTL() const noexcept
@@ -252,8 +256,10 @@ inline Packet::RawAddress const &Packet::GetSenderRaw() const noexcept
   return header_.sender;
 }
 
-inline Packet::Address const &Packet::GetTarget() const
+inline Packet::Address Packet::GetTarget() const
 {
+  FETCH_LOCK(lock_);
+
   if (target_.empty())
   {
     byte_array::ByteArray target;
@@ -266,8 +272,10 @@ inline Packet::Address const &Packet::GetTarget() const
   return target_;
 }
 
-inline Packet::Address const &Packet::GetSender() const
+inline Packet::Address Packet::GetSender() const
 {
+  FETCH_LOCK(lock_);
+
   if (sender_.empty())
   {
     byte_array::ByteArray sender;
@@ -308,9 +316,15 @@ inline void Packet::SetExchange(bool set) noexcept
   SetStamped(false);
 }
 
+inline void Packet::SetEncrypted(bool set) noexcept
+{
+  header_.encrypted = (set) ? 1 : 0;
+  SetStamped(false);
+}
+
 inline void Packet::SetTTL(uint8_t ttl) noexcept
 {
-  header_.ttl = ttl;
+  header_.ttl = (ttl & 0x7f);
   // stamps are not invalidated
 }
 
@@ -369,7 +383,7 @@ inline Packet::BinaryHeader Packet::StaticHeader() const noexcept
   return *reinterpret_cast<BinaryHeader const *>(&retVal);
 }
 
-inline void Packet::Sign(crypto::Prover &prover)
+inline void Packet::Sign(crypto::Prover const &prover)
 {
   SetStamped();
 

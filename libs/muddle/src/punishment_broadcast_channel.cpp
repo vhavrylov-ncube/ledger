@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -198,7 +198,7 @@ PunishmentBroadcastChannel::State PunishmentBroadcastChannel::OnResolvePromises(
     {
       QuestionStruct recvd_question;
 
-      if (!promise->As<QuestionStruct>(recvd_question))
+      if (!promise->GetResult(recvd_question))
       {
         FETCH_LOG_WARN(LOGGING_NAME, "Failed to deserialize response from: ", address.ToBase64());
       }

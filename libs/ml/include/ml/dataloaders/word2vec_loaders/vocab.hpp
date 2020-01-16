@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -60,6 +60,8 @@ public:
   SizeType                   GetWordCount();
   SizeType                   GetVocabCount() const;
   byte_array::ConstByteArray GetVocabHash();
+
+  bool WordKnown(std::string const &word) const;
 
 private:
   void                            SetVocabHash();

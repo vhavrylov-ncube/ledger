@@ -1,7 +1,7 @@
 #pragma once
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,11 +18,19 @@
 //------------------------------------------------------------------------------
 
 #include "meta/type_traits.hpp"
-#include "vectorise/fixed_point/fixed_point.hpp"
 
 #include <type_traits>
 
 namespace fetch {
+
+namespace fixed_point {
+struct BaseFixedpointType;
+template <uint16_t I, uint16_t F>
+class FixedPoint;
+using fp32_t  = FixedPoint<16, 16>;
+using fp64_t  = FixedPoint<32, 32>;
+using fp128_t = FixedPoint<64, 64>;
+}  // namespace fixed_point
 namespace math {
 namespace meta {
 
@@ -32,6 +40,12 @@ namespace meta {
 
 template <typename DataType>
 constexpr bool IsFixedPoint = std::is_base_of<fixed_point::BaseFixedpointType, DataType>::value;
+
+template <typename DataType>
+constexpr bool IsInteger = fetch::meta::IsInteger<DataType>;
+
+template <typename DataType>
+constexpr bool IsFloat = fetch::meta::IsFloat<DataType>;
 
 template <typename DataType>
 constexpr bool IsNotFixedPoint = !IsFixedPoint<DataType>;
@@ -52,6 +66,12 @@ constexpr bool                            IsNonFixedPointSignedArithmetic =
 template <typename DataType>
 constexpr bool IsNonFixedPointUnsignedArithmetic =
     std::is_arithmetic<DataType>::value && !(std::is_signed<DataType>::value);
+
+template <typename DataType, typename ReturnType = void>
+using IfIsFloat = fetch::meta::EnableIf<IsFloat<DataType>, ReturnType>;
+
+template <typename DataType, typename ReturnType = void>
+using IfIsInteger = fetch::meta::EnableIf<IsInteger<DataType>, ReturnType>;
 
 template <typename DataType, typename ReturnType = void>
 using IfIsFixedPoint = fetch::meta::EnableIf<IsFixedPoint<DataType>, ReturnType>;
@@ -79,6 +99,30 @@ constexpr bool IsPodOrFixedPoint = fetch::meta::IsPOD<T> || IsFixedPoint<T>;
 
 template <typename T, typename R = void>
 using IfIsPodOrFixedPoint = fetch::meta::EnableIf<IsPodOrFixedPoint<T>, R>;
+
+template <typename T>
+constexpr bool IsFixedPoint128 = std::is_same<T, fixed_point::FixedPoint<64, 64>>::value;
+
+template <typename T>
+constexpr bool IsNotFixedPoint128 = !IsFixedPoint128<T> && IsFixedPoint<T>;
+
+template <typename DataType, typename ReturnType = void>
+using IfIsFixedPoint128 = fetch::meta::EnableIf<IsFixedPoint128<DataType>, ReturnType>;
+
+template <typename DataType, typename ReturnType = void>
+using IfIsNotFixedPoint128 = fetch::meta::EnableIf<IsNotFixedPoint128<DataType>, ReturnType>;
+
+template <typename T>
+constexpr bool Is32bitType = (IsInteger<T> || IsFloat<T> || IsFixedPoint<T>)&&(sizeof(T) == 4);
+
+template <typename T>
+constexpr bool Is64bitType = (IsInteger<T> || IsFloat<T> || IsFixedPoint<T>)&&(sizeof(T) == 8);
+
+template <typename DataType, typename ReturnType = void>
+using IfIs32bitType = fetch::meta::EnableIf<Is32bitType<DataType>, ReturnType>;
+
+template <typename DataType, typename ReturnType = void>
+using IfIs64bitType = fetch::meta::EnableIf<Is32bitType<DataType>, ReturnType>;
 
 }  // namespace meta
 }  // namespace math

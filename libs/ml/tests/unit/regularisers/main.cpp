@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 #include "ml/ops/weights.hpp"
+#include "ml/regularisers/l1_regulariser.hpp"
+#include "ml/regularisers/l2_regulariser.hpp"
 #include "ml/regularisers/regularisation.hpp"
 #include "test_types.hpp"
 #include "vectorise/fixed_point/fixed_point.hpp"
@@ -44,7 +46,7 @@ TYPED_TEST(WeightsTest, l1_regulariser_test)
   using RegType    = fetch::ml::regularisers::L1Regulariser<TensorType>;
 
   // Initialise values
-  auto regularisation_rate = static_cast<DataType>(0.1f);
+  auto regularisation_rate = fetch::math::Type<DataType>("0.1");
   auto regulariser         = std::make_shared<RegType>();
 
   TensorType data = TensorType::FromString("1, -2, 3, -4, 5, -6, 7, -8");
@@ -56,7 +58,7 @@ TYPED_TEST(WeightsTest, l1_regulariser_test)
   // Apply regularisation
   w.SetRegularisation(regulariser, regularisation_rate);
   TensorType grad = w.GetGradients();
-  grad.Fill(static_cast<DataType>(0.0));
+  grad.Fill(DataType{0});
   w.ApplyGradient(grad);
 
   // Evaluate weight
@@ -75,7 +77,7 @@ TYPED_TEST(WeightsTest, l2_regulariser_test)
   using RegType    = fetch::ml::regularisers::L2Regulariser<TensorType>;
 
   // Initialise values
-  auto regularisation_rate = static_cast<DataType>(0.1f);
+  auto regularisation_rate = fetch::math::Type<DataType>("0.1");
   auto regulariser         = std::make_shared<RegType>();
 
   TensorType data = TensorType::FromString("1, -2, 3, -4, 5, -6, 7, -8");
@@ -87,7 +89,7 @@ TYPED_TEST(WeightsTest, l2_regulariser_test)
   // Apply regularisation
   w.SetRegularisation(regulariser, regularisation_rate);
   TensorType grad = w.GetGradients();
-  grad.Fill(static_cast<DataType>(0.0));
+  grad.Fill(DataType{0});
   w.ApplyGradient(grad);
 
   // Evaluate weight

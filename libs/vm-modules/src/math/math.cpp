@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //
-//   Copyright 2018-2019 Fetch.AI Limited
+//   Copyright 2018-2020 Fetch.AI Limited
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 #include "vm_modules/math/random.hpp"
 #include "vm_modules/math/read_csv.hpp"
 #include "vm_modules/math/sqrt.hpp"
-#include "vm_modules/math/tensor.hpp"
+#include "vm_modules/math/tensor/tensor.hpp"
 #include "vm_modules/math/trigonometry.hpp"
 
 using namespace fetch::vm;
@@ -34,22 +34,22 @@ namespace fetch {
 namespace vm_modules {
 namespace math {
 
-void BindMath(Module &module)
+void BindMath(Module &module, bool const enable_experimental)
 {
   // bind math functions
-  BindAbs(module);
-  BindExp(module);
-  BindLog(module);
-  BindPow(module);
-  BindRand(module);
-  BindSqrt(module);
-  BindTrigonometry(module);
+  BindAbs(module, enable_experimental);
+  BindExp(module, enable_experimental);
+  BindLog(module, enable_experimental);
+  BindPow(module, enable_experimental);
+  BindRand(module, enable_experimental);
+  BindSqrt(module, enable_experimental);
+  BindTrigonometry(module, enable_experimental);
 
   // bind math classes
-  VMTensor::Bind(module);
+  VMTensor::Bind(module, enable_experimental);
 
   // ReadCSV depends on VMTensor so must be bound after it
-  BindReadCSV(module);
+  BindReadCSV(module, enable_experimental);
 }
 
 }  // namespace math
